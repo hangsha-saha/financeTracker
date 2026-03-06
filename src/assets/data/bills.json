@@ -1,0 +1,203 @@
+[
+  {
+    "userId": 1,
+    "id": "BL-2026-001",
+    "customer": "Rajesh Kumar",
+    "date": "2026-02-21",
+    "payment": "CASH",
+    "subtotal": 880,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Biryani",    "qty": 2, "price": 350, "total": 700 },
+      { "name": "Naan",       "qty": 1, "price": 80,  "total": 80  },
+      { "name": "Cold Drink", "qty": 2, "price": 50,  "total": 100 }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-002",
+    "customer": "Priya Sharma",
+    "date": "2026-02-21",
+    "payment": "UPI",
+    "subtotal": 1400,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Butter Chicken", "qty": 2, "price": 320, "total": 640 },
+      { "name": "Garlic Naan",    "qty": 4, "price": 60,  "total": 240 },
+      { "name": "Mango Lassi",    "qty": 2, "price": 120, "total": 240 },
+      { "name": "Gulab Jamun",    "qty": 2, "price": 100, "total": 200 },
+      { "name": "Samosa",         "qty": 4, "price": 50,  "total": 200 }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-003",
+    "customer": "Amit Patel",
+    "date": "2026-02-20",
+    "payment": "CARD",
+    "subtotal": 682,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Paneer Tikka", "qty": 1, "price": 280, "total": 280 },
+      { "name": "Naan",         "qty": 2, "price": 40,  "total": 80  },
+      { "name": "Masala Chai",  "qty": 2, "price": 60,  "total": 120 },
+      { "name": "Rasgulla",     "qty": 2, "price": 90,  "total": 180 }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-004",
+    "customer": "Sunita Devi",
+    "date": "2026-02-20",
+    "payment": "CASH",
+    "subtotal": 1172,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Dal Makhani",   "qty": 2, "price": 220, "total": 440 },
+      { "name": "Butter Chicken","qty": 1, "price": 320, "total": 320 },
+      { "name": "Bread Basket",  "qty": 2, "price": 90,  "total": 180 },
+      { "name": "Banana Lassi",  "qty": 2, "price": 120, "total": 240 }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-005",
+    "customer": "Vikram Singh",
+    "date": "2026-02-19",
+    "payment": "UPI",
+    "subtotal": 800,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Mutton Biryani", "qty": 1, "price": 420, "total": 420 },
+      { "name": "Raita",          "qty": 2, "price": 60,  "total": 120 },
+      { "name": "Cold Drink",     "qty": 2, "price": 50,  "total": 100 },
+      { "name": "Ice Cream",      "qty": 1, "price": 100, "total": 100 }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-006",
+    "customer": "Walk-in Customer",
+    "date": "2026-02-19",
+    "payment": "CARD",
+    "subtotal": 590,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Veg Fried Rice", "qty": 2, "price": 160, "total": 320 },
+      { "name": "Cold Drink",     "qty": 2, "price": 50,  "total": 100 },
+      { "name": "Samosa",         "qty": 2, "price": 50,  "total": 100 }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-007",
+    "customer": "Deepa Nair",
+    "date": "2026-02-18",
+    "payment": "UPI",
+    "subtotal": 960,
+    "tax": 10,
+    "discount": 50,
+    "items": [
+      { "name": "Kadai Paneer", "qty": 2, "price": 260, "total": 520 },
+      { "name": "Cheese Naan",  "qty": 3, "price": 70,  "total": 210 },
+      { "name": "Mango Lassi",  "qty": 2, "price": 120, "total": 240 }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-008",
+    "customer": "Ravi Menon",
+    "date": "2026-02-18",
+    "payment": "CASH",
+    "subtotal": 1050,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Tandoori Chicken", "qty": 1, "price": 380, "total": 380 },
+      { "name": "Palak Paneer",     "qty": 1, "price": 240, "total": 240 },
+      { "name": "Garlic Naan",      "qty": 3, "price": 60,  "total": 180 },
+      { "name": "Brownie Sundae",   "qty": 1, "price": 180, "total": 180 }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-009",
+    "customer": "Ananya Roy",
+    "date": "2026-02-17",
+    "payment": "UPI",
+    "subtotal": 700,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Chicken Tikka", "qty": 1, "price": 340, "total": 340 },
+      { "name": "Lemon Rice",    "qty": 2, "price": 140, "total": 280 },
+      { "name": "Black Coffee",  "qty": 1, "price": 80,  "total": 80  }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-010",
+    "customer": "Suresh Iyer",
+    "date": "2026-02-17",
+    "payment": "UPI",
+    "subtotal": 540,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Fish Curry",   "qty": 1, "price": 360, "total": 360 },
+      { "name": "Basmati Rice", "qty": 2, "price": 80,  "total": 160 },
+      { "name": "Masala Chai",  "qty": 1, "price": 60,  "total": 60  }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-011",
+    "customer": "Meena Krishnan",
+    "date": "2026-02-16",
+    "payment": "CASH",
+    "subtotal": 450,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Chaat",        "qty": 2, "price": 150, "total": 300 },
+      { "name": "French Fries", "qty": 1, "price": 120, "total": 120 },
+      { "name": "Masala Chai",  "qty": 1, "price": 60,  "total": 60  }
+    ]
+  },
+  {
+    "userId": 1,
+    "id": "BL-2026-012",
+    "customer": "Arjun Mehta",
+    "date": "2026-02-16",
+    "payment": "CARD",
+    "subtotal": 1300,
+    "tax": 10,
+    "discount": 100,
+    "items": [
+      { "name": "Shahi Paneer",   "qty": 2, "price": 270, "total": 540 },
+      { "name": "Mutton Biryani", "qty": 1, "price": 420, "total": 420 },
+      { "name": "Bread Basket",   "qty": 2, "price": 90,  "total": 180 },
+      { "name": "Fruit Salad",    "qty": 1, "price": 130, "total": 130 }
+    ]
+  },
+  {
+    "userId": 2,
+    "id": "BL-2026-013",
+    "customer": "Test User",
+    "date": "2026-02-15",
+    "payment": "CASH",
+    "subtotal": 500,
+    "tax": 10,
+    "discount": 0,
+    "items": [
+      { "name": "Biryani", "qty": 1, "price": 350, "total": 350 },
+      { "name": "Naan",    "qty": 2, "price": 40,  "total": 80  }
+    ]
+  }
+]

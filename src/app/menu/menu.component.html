@@ -1,0 +1,361 @@
+<!-- ══════════ MAIN ══════════ -->
+<main class="main-content">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <h1>Menu</h1>
+      <p>Manage your restaurant menu items</p>
+    </div>
+    <div class="header-right">
+      <div class="header-pill">
+        {{ filtered.length }} of {{ menuData.length }} items
+      </div>
+      <button class="add-menu-btn" (click)="openAddModal()">
+        <span>+</span><span>Add Menu Item</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+    <!-- ── Filters ── -->
+    <div class="filters-section">
+      <span class="filter-label">Type</span>
+      <select
+        class="filter-select"
+        [(ngModel)]="fType"
+        (change)="applyFilters()"
+      >
+        <option value="">All Types</option>
+        <option value="Veg">Veg</option>
+        <option value="Non-Veg">Non-Veg</option>
+        <option value="Egg">Egg</option>
+        <option value="Vegan">Vegan</option>
+      </select>
+
+      <span class="filter-label">Available</span>
+      <select
+        class="filter-select"
+        [(ngModel)]="fAvailable"
+        (change)="applyFilters()"
+      >
+        <option value="">All</option>
+        <option value="yes">Available</option>
+        <option value="no">Unavailable</option>
+      </select>
+
+      <span class="filter-label">Price ₹</span>
+      <input
+        type="number"
+        class="filter-input price-input"
+        placeholder="Min"
+        min="0"
+        [(ngModel)]="fMinPrice"
+        (change)="applyFilters()"
+      />
+      <span class="price-sep">–</span>
+      <input
+        type="number"
+        class="filter-input price-input"
+        placeholder="Max"
+        min="0"
+        [(ngModel)]="fMaxPrice"
+        (change)="applyFilters()"
+      />
+
+      <input
+        type="text"
+        class="filter-input search-input"
+        placeholder="🔍  Search items..."
+        [(ngModel)]="fSearch"
+        (input)="applyFilters()"
+      />
+
+      <button class="clear-btn" (click)="clearFilters()">↺ Clear</button>
+    </div>
+
+    <!-- ── Bulk toolbar ── -->
+    <div class="bulk-toolbar" [class.visible]="showBulkToolbar">
+      <span class="bulk-info">
+        {{ selectedCount }} item{{ selectedCount > 1 ? "s" : "" }} selected
+      </span>
+      <button
+        class="bulk-btn bulk-btn-edit"
+        [disabled]="!canBulkEdit"
+        [title]="
+          canBulkEdit ? 'Edit selected item' : 'Select only 1 item to edit'
+        "
+        (click)="bulkEdit()"
+      >
+        ✏️ Edit
+      </button>
+      <button class="bulk-btn bulk-btn-delete" (click)="bulkDelete()">
+        🗑️ Delete
+      </button>
+      <button class="bulk-btn bulk-btn-cancel" (click)="clearAllSelections()">
+        ✕ Clear
+      </button>
+    </div>
+
+    <!-- ── Table ── -->
+    <div class="table-section">
+      <div class="table-wrapper">
+        <table *ngIf="pagedItems.length > 0">
+          <thead>
+            <tr>
+              <!-- Select-all checkbox -->
+              <th class="checkbox-cell">
+                <input
+                  type="checkbox"
+                  class="custom-checkbox"
+                  [checked]="selectAllChecked"
+                  [indeterminate]="selectAllIndeterminate"
+                  (change)="toggleSelectAll($any($event.target).checked)"
+                />
+              </th>
+              <th
+                (click)="setSort('name')"
+                [class.sort-asc]="isSortActive('name') && sortDir === 'asc'"
+                [class.sort-desc]="isSortActive('name') && sortDir === 'desc'"
+              >
+                Item Name <span class="si">{{ getSortIcon("name") }}</span>
+              </th>
+              <th
+                (click)="setSort('type')"
+                [class.sort-asc]="isSortActive('type') && sortDir === 'asc'"
+                [class.sort-desc]="isSortActive('type') && sortDir === 'desc'"
+              >
+                Type <span class="si">{{ getSortIcon("type") }}</span>
+              </th>
+              <th
+                (click)="setSort('price')"
+                [class.sort-asc]="isSortActive('price') && sortDir === 'asc'"
+                [class.sort-desc]="isSortActive('price') && sortDir === 'desc'"
+              >
+                Price (₹) <span class="si">{{ getSortIcon("price") }}</span>
+              </th>
+              <th
+                (click)="setSort('available')"
+                [class.sort-asc]="
+                  isSortActive('available') && sortDir === 'asc'
+                "
+                [class.sort-desc]="
+                  isSortActive('available') && sortDir === 'desc'
+                "
+              >
+                Available <span class="si">{{ getSortIcon("available") }}</span>
+              </th>
+              <th
+                (click)="setSort('description')"
+                [class.sort-asc]="
+                  isSortActive('description') && sortDir === 'asc'
+                "
+                [class.sort-desc]="
+                  isSortActive('description') && sortDir === 'desc'
+                "
+              >
+                Description
+                <span class="si">{{ getSortIcon("description") }}</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let item of pagedItems"
+              [class.selected]="isSelected(item.id)"
+            >
+              <td class="checkbox-cell">
+                <input
+                  type="checkbox"
+                  class="custom-checkbox"
+                  [checked]="isSelected(item.id)"
+                  (change)="toggleRow(item.id, $any($event.target).checked)"
+                />
+              </td>
+              <td>
+                <strong>{{ item.name }}</strong>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="typeBadgeClass(item.type)">{{
+                  item.type
+                }}</span>
+              </td>
+              <td class="price">{{ inr(item.price) }}</td>
+              <td>
+                <span
+                  [class.available-yes]="item.available === 'yes'"
+                  [class.available-no]="item.available !== 'yes'"
+                >
+                  {{ item.available === "yes" ? "✔ Yes" : "✗ No" }}
+                </span>
+              </td>
+              <td class="desc-col">{{ item.description || "—" }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Empty state -->
+        <div class="empty-state" *ngIf="pagedItems.length === 0">
+          <div class="empty-state-icon">🍽️</div>
+          <h3>No items found</h3>
+          <p>Try adjusting your filters or add a new item</p>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <div class="pagination-left">
+          <span class="pagination-info">
+            Page {{ page }} of {{ totalPages }} ({{ filtered.length }} items)
+          </span>
+          <select class="pg-size-select" (change)="onPgSizeChange($event)">
+            <option value="10" selected>10 / page</option>
+            <option value="20">20 / page</option>
+            <option value="50">50 / page</option>
+          </select>
+        </div>
+        <div class="pg-controls">
+          <button
+            class="pg-btn"
+            [disabled]="page === 1"
+            (click)="goToPage(page - 1)"
+          >
+            ←
+          </button>
+          <button
+            class="pg-btn"
+            *ngFor="let p of pageNumbers"
+            [class.pg-active]="p === page"
+            (click)="goToPage(p)"
+          >
+            {{ p }}
+          </button>
+          <button
+            class="pg-btn"
+            [disabled]="page === totalPages"
+            (click)="goToPage(page + 1)"
+          >
+            →
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ══════════ ADD / EDIT MODAL ══════════ -->
+<div class="modal-overlay" [class.active]="showModal" (click)="closeModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">
+        {{ isEditing ? "Edit Menu Item" : "Add Menu Item" }}
+      </h2>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Name -->
+      <div class="form-row">
+        <div class="form-group" style="grid-column: 1 / -1">
+          <label class="form-label">Item Name *</label>
+          <input
+            type="text"
+            class="form-input"
+            [class.input-error]="errName"
+            placeholder="e.g. Chicken Biryani"
+            [(ngModel)]="fName"
+          />
+          <span class="form-error" *ngIf="errName">Item name is required</span>
+        </div>
+      </div>
+
+      <!-- Type + Price -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Type *</label>
+          <select
+            class="form-select"
+            [class.input-error]="errType"
+            [(ngModel)]="fTypeModal"
+          >
+            <option value="">Select Type</option>
+            <option value="Veg">Veg</option>
+            <option value="Non-Veg">Non-Veg</option>
+            <option value="Egg">Egg</option>
+            <option value="Vegan">Vegan</option>
+          </select>
+          <span class="form-error" *ngIf="errType">Type is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price (₹) *</label>
+          <input
+            type="number"
+            class="form-input"
+            [class.input-error]="errPrice"
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+            [(ngModel)]="fPrice"
+          />
+          <span class="form-error" *ngIf="errPrice"
+            >Valid price is required</span
+          >
+        </div>
+      </div>
+
+      <!-- Available -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Available</label>
+          <select class="form-select" [(ngModel)]="fAvailModal">
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea
+          class="form-textarea"
+          placeholder="Brief description of the dish..."
+          [(ngModel)]="fDesc"
+        ></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="saveItem()">
+        {{ isEditing ? "Save Changes" : "Add Item" }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CONFIRM DELETE ══════════ -->
+<div class="confirm-overlay" [class.active]="showConfirm">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">Delete Item(s)?</div>
+    <div class="confirm-message">{{ confirmMsg }}</div>
+    <div class="confirm-btns">
+      <button class="btn btn-secondary" (click)="cancelConfirm()">
+        Cancel
+      </button>
+      <button class="btn btn-danger" (click)="doConfirm()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TOAST ══════════ -->
+<div
+  class="toast"
+  [class.show]="toastVisible"
+  [class.success]="toastType === 'success'"
+  [class.danger]="toastType === 'danger'"
+  [class.info]="toastType === 'info'"
+>
+  <span *ngIf="toastType === 'success'">✅</span>
+  <span *ngIf="toastType === 'danger'">🗑️</span>
+  <span *ngIf="toastType === 'info'">ℹ️</span>
+  {{ toastMsg }}
+</div>

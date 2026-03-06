@@ -1,0 +1,183 @@
+<div class="register-container">
+  <div class="register-card">
+
+    <!-- ══ Left Panel ══ -->
+    <div class="register-header">
+      <div class="header-logo">
+        <div class="logo-icon">🏠</div>
+        <div class="logo-text">FinanceTracker</div>
+      </div>
+      <h1 class="header-title">Create account</h1>
+      <p class="header-subtitle">Fill in details to get started</p>
+
+      <div class="benefits-list">
+        <div class="benefit-item">
+          <span class="benefit-icon">📊</span>
+          <span>Track Income &amp; Expenses</span>
+        </div>
+        <div class="benefit-item">
+          <span class="benefit-icon">📦</span>
+          <span>Manage Inventory</span>
+        </div>
+        <div class="benefit-item">
+          <span class="benefit-icon">👥</span>
+          <span>Team Management</span>
+        </div>
+        <div class="benefit-item">
+          <span class="benefit-icon">🧾</span>
+          <span>Generate Bills</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Right: Form Panel ══ -->
+    <div class="register-form-container">
+
+      <!-- ══════ FORM ══════ -->
+      <ng-container *ngIf="!showSuccess">
+
+        <h2 class="form-heading">Account Details</h2>
+        <p class="form-subheading">Create your login credentials</p>
+
+        <!-- API Error Banner -->
+        <div class="api-error-banner" *ngIf="registerError">
+          ⚠️ {{ registerError }}
+        </div>
+
+        <!-- Username -->
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <div class="form-input-wrapper">
+            <input
+              type="text"
+              class="form-input"
+              [class.input-error]="errUsername"
+              [class.input-success]="!errUsername && username.length >= 3"
+              placeholder="johndoe"
+              [(ngModel)]="username"
+              (blur)="onUsernameBlur()"
+              minlength="3"
+              maxlength="20">
+            <span class="input-icon">👤</span>
+          </div>
+          <span class="form-error" *ngIf="errUsername">{{ errUsername }}</span>
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <div class="form-input-wrapper">
+            <input
+              type="email"
+              class="form-input"
+              [class.input-error]="errEmail"
+              [class.input-success]="!errEmail && email.length > 0"
+              placeholder="john@restaurant.com"
+              [(ngModel)]="email"
+              (blur)="onEmailBlur()">
+            <span class="input-icon">📧</span>
+          </div>
+          <span class="form-error" *ngIf="errEmail">{{ errEmail }}</span>
+        </div>
+
+        <!-- Password -->
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <div class="form-input-wrapper">
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              class="form-input"
+              [class.input-error]="errPassword"
+              placeholder="Min. 8 characters"
+              [(ngModel)]="password"
+              (input)="onPasswordInput()"
+              minlength="8">
+            <button type="button" class="eye-btn" (click)="togglePassword()">
+              <svg *ngIf="showPassword" xmlns="http://www.w3.org/2000/svg"
+                width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+              <svg *ngIf="!showPassword" xmlns="http://www.w3.org/2000/svg"
+                width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Strength Bar -->
+          <div class="password-strength" *ngIf="showStrength">
+            <div class="strength-bar">
+              <div class="strength-fill"
+                [style.width]="strengthWidth"
+                [style.background]="strengthColor">
+              </div>
+            </div>
+            <span class="strength-text" [style.color]="strengthColor">
+              {{ strengthLabel }}
+            </span>
+          </div>
+          <span class="form-error" *ngIf="errPassword">{{ errPassword }}</span>
+        </div>
+
+        <!-- Agreement -->
+        <div class="form-agreement">
+          <input type="checkbox" id="agreement"
+            class="checkbox" [(ngModel)]="agreement">
+          <label for="agreement" class="agreement-text">
+            I agree to the
+            <a href="#" (click)="$event.preventDefault()">Terms of Service</a>
+            and
+            <a href="#" (click)="$event.preventDefault()">Privacy Policy</a>
+          </label>
+        </div>
+        <span class="form-error agreement-error" *ngIf="errAgreement">
+          {{ errAgreement }}
+        </span>
+
+        <!-- Register Button -->
+        <button
+          class="register-btn"
+          [class.loading]="isLoading"
+          [disabled]="isLoading"
+          (click)="register()">
+          <span *ngIf="!isLoading">Create Account</span>
+          <span *ngIf="isLoading" class="btn-loading-text">
+            Creating account...
+          </span>
+        </button>
+
+        <!-- Sign in link -->
+        <div class="signin-link">
+          Already have an account?
+          <a routerLink="/login">Sign in</a>
+        </div>
+
+      </ng-container>
+      <!-- end form -->
+
+      <!-- ══════ SUCCESS ══════ -->
+      <ng-container *ngIf="showSuccess">
+        <div class="success-section">
+          <div class="success-icon">✅</div>
+          <h2 class="success-title">Account Created!</h2>
+          <p class="success-msg">
+            Welcome, <strong>{{ username }}</strong>! Your account is ready.
+          </p>
+          <div class="success-spinner">
+            <div class="spinner"></div>
+            <span>Redirecting to dashboard...</span>
+          </div>
+        </div>
+      </ng-container>
+      <!-- end success -->
+
+    </div>
+  </div>
+</div>

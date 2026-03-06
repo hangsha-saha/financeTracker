@@ -1,0 +1,543 @@
+<!-- ══════════ MAIN ══════════ -->
+<main class="main-content">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <h1>Inventory</h1>
+      <p>Track stock levels and remaining quantities</p>
+    </div>
+    <div class="header-right">
+      <div class="stat-pill success">
+        <span class="stat-pill-value">{{ statInStock }}</span>
+        <span class="stat-pill-label">In Stock</span>
+      </div>
+      <div class="stat-pill warning">
+        <span class="stat-pill-value">{{ statLow }}</span>
+        <span class="stat-pill-label">Low Stock</span>
+      </div>
+      <div class="stat-pill danger">
+        <span class="stat-pill-value">{{ statOut }}</span>
+        <span class="stat-pill-label">Out</span>
+      </div>
+      <button class="header-action" (click)="openAddModal()">
+        <span>+</span><span>Add Item</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+    <!-- ── Loading ── -->
+    <div class="loading-state" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <span>Loading inventory...</span>
+    </div>
+
+    <!-- ── Error ── -->
+    <div class="error-state" *ngIf="apiError && !isLoading">
+      <div>⚠️ {{ apiError }}</div>
+      <button class="clear-btn" (click)="loadInventory()">Retry</button>
+    </div>
+
+    <!-- ── Main content (only when loaded) ── -->
+    <ng-container *ngIf="!isLoading && !apiError">
+      <!-- Filters -->
+      <div class="search-section">
+        <span class="filter-label">Search</span>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search by name or supplier..."
+          [(ngModel)]="searchText"
+          (input)="applyFilters()"
+        />
+        <span class="filter-label">Status</span>
+        <select
+          class="filter-select"
+          [(ngModel)]="statusFilter"
+          (change)="applyFilters()"
+        >
+          <option value="all">All Items</option>
+          <option value="in-stock">In Stock</option>
+          <option value="low-stock">Low Stock</option>
+          <option value="out-of-stock">Out of Stock</option>
+        </select>
+
+        <span class="filter-label">Category</span>
+        <select
+          class="filter-select"
+          [(ngModel)]="categoryFilter"
+          (change)="applyFilters()"
+        >
+          <option value="">All Categories</option>
+          <option *ngFor="let cat of CATEGORIES" [value]="cat">
+            {{ cat }}
+          </option>
+        </select>
+
+        <button class="clear-btn" (click)="clearFilters()">↺ Clear</button>
+      </div>
+
+      <!-- Table -->
+      <div class="table-section">
+        <div class="table-wrapper">
+          <table *ngIf="pagedItems.length > 0">
+            <thead>
+              <tr>
+                <th
+                  (click)="setSort('name')"
+                  [class.sort-asc]="isSortActive('name') && sortDir === 'asc'"
+                  [class.sort-desc]="isSortActive('name') && sortDir === 'desc'"
+                >
+                  Item Name <span class="si">{{ getSortIcon("name") }}</span>
+                </th>
+                <th
+                  (click)="setSort('category')"
+                  [class.sort-asc]="
+                    isSortActive('category') && sortDir === 'asc'
+                  "
+                  [class.sort-desc]="
+                    isSortActive('category') && sortDir === 'desc'
+                  "
+                >
+                  Category <span class="si">{{ getSortIcon("category") }}</span>
+                </th>
+                <th
+                  (click)="setSort('quantity')"
+                  [class.sort-asc]="
+                    isSortActive('quantity') && sortDir === 'asc'
+                  "
+                  [class.sort-desc]="
+                    isSortActive('quantity') && sortDir === 'desc'
+                  "
+                >
+                  Total Qty
+                  <span class="si">{{ getSortIcon("quantity") }}</span>
+                </th>
+                <th
+                  (click)="setSort('usedQuantity')"
+                  [class.sort-asc]="
+                    isSortActive('usedQuantity') && sortDir === 'asc'
+                  "
+                  [class.sort-desc]="
+                    isSortActive('usedQuantity') && sortDir === 'desc'
+                  "
+                >
+                  Used Qty
+                  <span class="si">{{ getSortIcon("usedQuantity") }}</span>
+                </th>
+                <th class="remaining-cell">Remaining Qty</th>
+                <th
+                  (click)="setSort('status')"
+                  [class.sort-asc]="isSortActive('status') && sortDir === 'asc'"
+                  [class.sort-desc]="
+                    isSortActive('status') && sortDir === 'desc'
+                  "
+                >
+                  Status <span class="si">{{ getSortIcon("status") }}</span>
+                </th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of pagedItems">
+                <!-- Item Name -->
+                <td>
+                  <div class="item-name">
+                    <span
+                      *ngIf="getStatus(item) !== 'in-stock'"
+                      style="font-size: 13px"
+                      >⚠️</span
+                    >
+                    <strong>{{ item.name }}</strong>
+                    <span *ngIf="item.supplier" class="supplier-tag"
+                      >· {{ item.supplier }}</span
+                    >
+                  </div>
+                </td>
+
+                <!-- Category -->
+                <td>
+                  <span class="category-tag">{{ item.category }}</span>
+                </td>
+
+                <!-- Total Qty -->
+                <td>
+                  <span class="quantity" [ngClass]="getQtyClass(item)">
+                    {{ fmt(item.quantity) }} {{ item.unit }}
+                  </span>
+                </td>
+
+                <!-- Used Qty -->
+                <td>
+                  <span class="used-qty"
+                    >{{ fmt(item.usedQuantity) }} {{ item.unit }}</span
+                  >
+                </td>
+
+                <!-- Remaining Qty with bar -->
+                <td class="remaining-cell">
+                  <div class="rem-bar-wrap">
+                    <div class="rem-bar-header">
+                      <span
+                        class="rem-bar-value"
+                        [style.color]="
+                          getBarColor(getBarClass(getRemPct(item)))
+                        "
+                      >
+                        {{ fmt(getRemaining(item)) }} {{ item.unit }}
+                      </span>
+                      <span class="rem-bar-pct"
+                        >{{ getRemPct(item) | number: "1.0-0" }}%</span
+                      >
+                    </div>
+                    <div class="rem-bar-track">
+                      <div
+                        class="rem-bar-fill"
+                        [ngClass]="getBarClass(getRemPct(item))"
+                        [style.width.%]="getRemPct(item)"
+                      ></div>
+                    </div>
+                    <span
+                      class="rem-bar-note"
+                      [class.warn]="getStatus(item) !== 'in-stock'"
+                    >
+                      <ng-container *ngIf="getStatus(item) === 'out-of-stock'">
+                        Out of stock — reorder now
+                      </ng-container>
+                      <ng-container *ngIf="getStatus(item) === 'low-stock'">
+                        Low stock — below 30%
+                      </ng-container>
+                      <ng-container *ngIf="getStatus(item) === 'in-stock'">
+                        {{ fmt(item.usedQuantity) }} {{ item.unit }} used
+                      </ng-container>
+                    </span>
+                  </div>
+                </td>
+
+                <!-- Status badge -->
+                <td>
+                  <span
+                    class="status-badge"
+                    [ngClass]="getStatusClass(getStatus(item))"
+                  >
+                    {{ getStatusLabel(getStatus(item)) }}
+                  </span>
+                </td>
+
+                <!-- Actions — item.inventoryId (string) replaces old item.id (number) -->
+                <td>
+                  <div class="actions">
+                    <button
+                      class="action-btn"
+                      title="Edit item"
+                      (click)="openEditModal(item.inventoryId)"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      class="action-btn del"
+                      title="Delete item"
+                      (click)="confirmDelete(item.inventoryId)"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Empty state -->
+          <div class="no-results" *ngIf="pagedItems.length === 0">
+            <div style="font-size: 36px; margin-bottom: 12px">📦</div>
+            <div class="no-results-title">No items found</div>
+            <div class="no-results-sub">
+              Try adjusting your search or filters
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <div class="pagination-left">
+            <span class="pagination-info">
+              Page {{ page }} of {{ totalPages }} ({{ filtered.length }} item{{
+                filtered.length !== 1 ? "s" : ""
+              }})
+            </span>
+            <select class="pg-size-select" (change)="onPgSizeChange($event)">
+              <option value="10">10 / page</option>
+              <option value="20">20 / page</option>
+              <option value="50">50 / page</option>
+            </select>
+          </div>
+          <div class="pg-controls">
+            <button
+              class="pg-btn"
+              [disabled]="page === 1"
+              (click)="goToPage(page - 1)"
+            >
+              ←
+            </button>
+            <button
+              class="pg-btn"
+              *ngFor="let p of pageNumbers"
+              [class.pg-active]="p === page"
+              (click)="goToPage(p)"
+            >
+              {{ p }}
+            </button>
+            <button
+              class="pg-btn"
+              [disabled]="page === totalPages"
+              (click)="goToPage(page + 1)"
+            >
+              →
+            </button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+    <!-- end ng-container -->
+  </div>
+</main>
+
+<!-- ══════════ ADD / EDIT MODAL ══════════ -->
+<div class="modal-overlay" [class.active]="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">
+        {{ isEditing ? "Edit Item" : "Add New Item" }}
+      </h2>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Live preview -->
+      <div class="rem-preview">
+        <div class="rem-preview-label">Remaining Quantity Preview</div>
+        <div class="rem-preview-row">
+          <span class="rem-preview-value">{{ previewValue }}</span>
+          <span class="rem-preview-pct">{{ previewPct }}</span>
+        </div>
+        <div class="rem-preview-track">
+          <div
+            class="rem-preview-fill"
+            [style.width.%]="previewBarWidth"
+            [style.background]="previewBarColor"
+          ></div>
+        </div>
+        <div
+          style="font-size: 11px; color: var(--text-tertiary); margin-top: 2px"
+        >
+          Remaining = Total Quantity − Used Quantity
+        </div>
+      </div>
+
+      <!-- Row 1: Name + Category -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Item Name *</label>
+          <input
+            type="text"
+            class="form-input"
+            [class.input-error]="errName"
+            placeholder="e.g. Basmati Rice"
+            [(ngModel)]="fName"
+          />
+          <span class="form-error" *ngIf="errName">Name is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category *</label>
+          <select
+            class="form-select"
+            [class.input-error]="errCategory"
+            [(ngModel)]="fCategory"
+          >
+            <option value="">Select Category</option>
+            <option *ngFor="let cat of CATEGORIES" [value]="cat">
+              {{ cat }}
+            </option>
+          </select>
+          <span class="form-error" *ngIf="errCategory"
+            >Category is required</span
+          >
+        </div>
+      </div>
+
+      <!-- Row 2: Unit + Minimum Quantity -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Unit *</label>
+          <select
+            class="form-select"
+            [class.input-error]="errUnit"
+            [(ngModel)]="fUnit"
+            (change)="updatePreview()"
+          >
+            <option value="">Select Unit</option>
+            <option *ngFor="let u of UNITS" [value]="u">{{ u }}</option>
+          </select>
+          <span class="form-error" *ngIf="errUnit">Unit is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Minimum Quantity</label>
+          <input
+            type="number"
+            class="form-input"
+            placeholder="e.g. 10"
+            min="0"
+            step="0.01"
+            [(ngModel)]="fMinQty"
+          />
+          <span class="form-hint">Alert threshold for low stock</span>
+        </div>
+      </div>
+
+      <!-- Row 3: Total Qty + Used Qty -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Total Quantity *</label>
+          <input
+            type="number"
+            class="form-input"
+            [class.input-error]="errQty"
+            placeholder="e.g. 50"
+            min="0"
+            step="0.01"
+            [(ngModel)]="fQty"
+            (input)="updatePreview()"
+          />
+          <span class="form-error" *ngIf="errQty">Valid quantity required</span>
+          <span class="form-hint">Full stock received / on hand</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Used Quantity *</label>
+          <input
+            type="number"
+            class="form-input"
+            [class.input-error]="errUsed"
+            placeholder="e.g. 12"
+            min="0"
+            step="0.01"
+            [(ngModel)]="fUsed"
+            (input)="updatePreview()"
+          />
+          <span class="form-error" *ngIf="errUsed">{{ errUsedMsg }}</span>
+          <span class="form-hint">Consumed / issued so far</span>
+        </div>
+      </div>
+
+      <!-- Row 4: Vendor ID + Cost per Unit -->
+      <!-- Row 4: Vendor (select) + Cost per Unit -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Vendor / Supplier *</label>
+
+          <!-- Loading vendors -->
+          <div *ngIf="isLoadingVendors" class="vendor-loading">
+            <div class="spinner-sm"></div>
+            <span>Loading vendors...</span>
+          </div>
+
+          <!-- Vendor select dropdown -->
+          <select
+            *ngIf="!isLoadingVendors"
+            class="form-select"
+            [class.input-error]="errVendor"
+            [(ngModel)]="fVendorId"
+          >
+            <option [ngValue]="null" disabled>Select Vendor</option>
+            <option *ngFor="let v of vendorList" [ngValue]="v.vendorId">
+              {{ v.name }}
+            </option>
+          </select>
+
+          <span class="form-error" *ngIf="errVendor">Vendor is required</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Cost per Unit (₹)</label>
+          <input
+            type="number"
+            class="form-input"
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+            [(ngModel)]="fCostUnit"
+          />
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea
+          class="form-textarea"
+          placeholder="Any additional notes..."
+          [(ngModel)]="fNotes"
+        ></textarea>
+      </div>
+    </div>
+    <!-- /modal-body -->
+
+    <div class="modal-footer">
+      <button
+        class="btn btn-secondary"
+        [disabled]="isSaving"
+        (click)="closeModal()"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn-primary"
+        [disabled]="isSaving"
+        (click)="saveItem()"
+      >
+        <span *ngIf="!isSaving">{{
+          isEditing ? "Save Changes" : "Add Item"
+        }}</span>
+        <span *ngIf="isSaving">Saving...</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CONFIRM DELETE ══════════ -->
+<div class="confirm-overlay" [class.active]="showConfirm">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">Delete Item?</div>
+    <div class="confirm-message">{{ confirmMsg }}</div>
+    <div class="confirm-btns">
+      <button
+        class="btn btn-secondary"
+        [disabled]="isDeleting"
+        (click)="cancelDelete()"
+      >
+        Cancel
+      </button>
+      <button
+        class="btn btn-danger"
+        [disabled]="isDeleting"
+        (click)="doDelete()"
+      >
+        <span *ngIf="!isDeleting">Delete</span>
+        <span *ngIf="isDeleting">Deleting...</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TOAST ══════════ -->
+<div
+  class="toast"
+  [class.show]="toastVisible"
+  [class.success]="toastType === 'success'"
+  [class.danger]="toastType === 'danger'"
+  [class.info]="toastType === 'info'"
+>
+  <span *ngIf="toastType === 'success'">✅</span>
+  <span *ngIf="toastType === 'danger'">🗑️</span>
+  <span *ngIf="toastType === 'info'">ℹ️</span>
+  {{ toastMsg }}
+</div>

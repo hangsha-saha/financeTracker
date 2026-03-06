@@ -1,0 +1,49 @@
+[
+  {
+    "userId": 1,
+    "menu": [
+      { "name": "Biryani",          "price": 350, "category": "Rice"     },
+      { "name": "Butter Chicken",   "price": 320, "category": "Curry"    },
+      { "name": "Boondi Raita",     "price": 60,  "category": "Sides"    },
+      { "name": "Basmati Rice",     "price": 80,  "category": "Rice"     },
+      { "name": "Bread Basket",     "price": 90,  "category": "Bread"    },
+      { "name": "Banana Lassi",     "price": 120, "category": "Drinks"   },
+      { "name": "Black Coffee",     "price": 80,  "category": "Drinks"   },
+      { "name": "Brownie Sundae",   "price": 180, "category": "Dessert"  },
+      { "name": "Naan",             "price": 40,  "category": "Bread"    },
+      { "name": "Paneer Tikka",     "price": 280, "category": "Starters" },
+      { "name": "Tandoori Chicken", "price": 380, "category": "Starters" },
+      { "name": "Dal Makhani",      "price": 220, "category": "Curry"    },
+      { "name": "Gulab Jamun",      "price": 100, "category": "Dessert"  },
+      { "name": "Cold Drink",       "price": 50,  "category": "Drinks"   },
+      { "name": "Mango Lassi",      "price": 120, "category": "Drinks"   },
+      { "name": "Masala Chai",      "price": 60,  "category": "Drinks"   },
+      { "name": "Chicken Tikka",    "price": 340, "category": "Starters" },
+      { "name": "Chapati",          "price": 30,  "category": "Bread"    },
+      { "name": "Cheese Naan",      "price": 70,  "category": "Bread"    },
+      { "name": "Chaat",            "price": 150, "category": "Starters" },
+      { "name": "Fish Curry",       "price": 360, "category": "Curry"    },
+      { "name": "French Fries",     "price": 120, "category": "Sides"    },
+      { "name": "Fruit Salad",      "price": 130, "category": "Dessert"  },
+      { "name": "Garlic Naan",      "price": 60,  "category": "Bread"    },
+      { "name": "Ice Cream",        "price": 100, "category": "Dessert"  },
+      { "name": "Kadai Paneer",     "price": 260, "category": "Curry"    },
+      { "name": "Lemon Rice",       "price": 140, "category": "Rice"     },
+      { "name": "Mutton Biryani",   "price": 420, "category": "Rice"     },
+      { "name": "Palak Paneer",     "price": 240, "category": "Curry"    },
+      { "name": "Rasgulla",         "price": 90,  "category": "Dessert"  },
+      { "name": "Samosa",           "price": 50,  "category": "Starters" },
+      { "name": "Shahi Paneer",     "price": 270, "category": "Curry"    },
+      { "name": "Veg Fried Rice",   "price": 160, "category": "Rice"     }
+    ]
+  },
+  {
+    "userId": 2,
+    "menu": [
+      { "name": "Pizza",      "price": 299, "category": "Main"   },
+      { "name": "Pasta",      "price": 249, "category": "Main"   },
+      { "name": "Burger",     "price": 149, "category": "Snacks" },
+      { "name": "Cold Coffee", "price": 99, "category": "Drinks" }
+    ]
+  }
+]

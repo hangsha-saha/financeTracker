@@ -1,0 +1,146 @@
+<main class="main-content">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <h1>Reports</h1>
+      <p>Generate and export financial reports</p>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ── Loading ── -->
+    <div class="loading-state" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <span>Loading report data...</span>
+    </div>
+
+    <!-- ── Error ── -->
+    <div class="error-state" *ngIf="apiError && !isLoading">
+      <div>⚠️ {{ apiError }}</div>
+      <button class="clear-btn" (click)="loadReportData()">Retry</button>
+    </div>
+
+    <!-- ── Main content ── -->
+    <ng-container *ngIf="!isLoading && !apiError">
+
+      <!-- Filters + Export -->
+      <div class="filters-section">
+        <div class="filter-group">
+          <label class="filter-label">Start Date</label>
+          <input type="date" class="filter-input"
+            [(ngModel)]="startDate" (change)="applyFilter()">
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">End Date</label>
+          <input type="date" class="filter-input"
+            [(ngModel)]="endDate" (change)="applyFilter()">
+        </div>
+        <div class="export-buttons">
+          <button class="export-btn pdf-btn" (click)="exportPdf()">
+            📄 Export PDF
+          </button>
+          <button class="export-btn excel-btn" (click)="exportExcel()">
+            📊 Export Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="summary-cards">
+        <div class="summary-card" style="animation-delay:0.1s">
+          <div class="summary-label">Total Income</div>
+          <div class="summary-value income">{{ fmtINR(totalIncome) }}</div>
+          <div class="summary-sub">Filtered period</div>
+        </div>
+        <div class="summary-card" style="animation-delay:0.2s">
+          <div class="summary-label">Total Expense</div>
+          <div class="summary-value expense">{{ fmtINR(totalExpense) }}</div>
+          <div class="summary-sub">Filtered period</div>
+        </div>
+        <div class="summary-card" style="animation-delay:0.3s">
+          <div class="summary-label">Net Profit</div>
+          <div class="summary-value" [ngClass]="profitClass">
+            {{ netProfitDisplay }}
+          </div>
+          <div class="summary-sub">Income minus expense</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+
+        <!-- Bar: Income vs Expense -->
+        <div class="chart-section full-width">
+          <div class="chart-title">📊 Monthly Income vs Expense</div>
+          <apx-chart
+            #barChartRef
+            [series]="barChartOptions.series!"
+            [chart]="barChartOptions.chart!"
+            [colors]="barChartOptions.colors!"
+            [xaxis]="barChartOptions.xaxis!"
+            [yaxis]="barChartOptions.yaxis!"
+            [tooltip]="barChartOptions.tooltip!"
+            [plotOptions]="barChartOptions.plotOptions!"
+            [dataLabels]="barChartOptions.dataLabels!"
+            [legend]="barChartOptions.legend!"
+            [grid]="barChartOptions.grid!">
+          </apx-chart>
+        </div>
+
+        <!-- Donut: Expense Breakdown -->
+        <div class="chart-section">
+          <div class="chart-title">🍩 Expense Breakdown</div>
+          <apx-chart
+            #donutChartRef
+            [series]="donutChartOptions.series!"
+            [chart]="donutChartOptions.chart!"
+            [labels]="donutChartOptions.labels!"
+            [colors]="donutChartOptions.colors!"
+            [tooltip]="donutChartOptions.tooltip!"
+            [legend]="donutChartOptions.legend!"
+            [dataLabels]="donutChartOptions.dataLabels!"
+            [plotOptions]="donutChartOptions.plotOptions!"
+            [responsive]="donutChartOptions.responsive!">
+          </apx-chart>
+        </div>
+
+        <!-- Area: Profit Trend -->
+        <div class="chart-section">
+          <div class="chart-title">📈 Profit Trend</div>
+          <apx-chart
+            #areaChartRef
+            [series]="areaChartOptions.series!"
+            [chart]="areaChartOptions.chart!"
+            [colors]="areaChartOptions.colors!"
+            [fill]="areaChartOptions.fill!"
+            [xaxis]="areaChartOptions.xaxis!"
+            [yaxis]="areaChartOptions.yaxis!"
+            [tooltip]="areaChartOptions.tooltip!"
+            [dataLabels]="areaChartOptions.dataLabels!"
+            [stroke]="areaChartOptions.stroke!"
+            [grid]="areaChartOptions.grid!"
+            [markers]="areaChartOptions.markers!">
+          </apx-chart>
+        </div>
+
+      </div>
+
+    </ng-container>
+    <!-- end main content -->
+
+  </div>
+</main>
+
+<!-- Toast -->
+<div class="toast"
+  [class.show]="toastVisible"
+  [class.success]="toastType === 'success'"
+  [class.danger]="toastType === 'danger'"
+  [class.info]="toastType === 'info'">
+  <span *ngIf="toastType === 'success'">✅</span>
+  <span *ngIf="toastType === 'danger'">❌</span>
+  <span *ngIf="toastType === 'info'">ℹ️</span>
+  {{ toastMsg }}
+</div>

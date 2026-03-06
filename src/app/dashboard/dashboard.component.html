@@ -1,0 +1,443 @@
+<!-- ══════════ MAIN CONTENT ══════════ -->
+<main class="main-content" (click)="closeNotifications()">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <h1>Dashboard</h1>
+      <p>Overview of your restaurant finances</p>
+    </div>
+    <div class="header-actions">
+      <!-- Notification Bell -->
+      <div class="notification-wrapper">
+        <div class="notification-icon" (click)="toggleNotifications($event)">
+          🔔
+          <span class="notification-badge" *ngIf="notificationCount > 0">{{
+            notificationCount
+          }}</span>
+        </div>
+        <div class="notification-popup" [class.open]="showNotifications">
+          <h4>Notifications</h4>
+          <div class="notification-item">
+            ⚠️ Low stock: Tomatoes<span>2 mins ago</span>
+          </div>
+          <div class="notification-item">
+            💵 New income recorded<span>10 mins ago</span>
+          </div>
+          <div class="notification-item">
+            📦 Vendor payment pending<span>1 hour ago</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-admin">{{ headerRoleLabel }}</div>
+    </div>
+  </header>
+
+  <section class="content">
+    <!-- ── Metrics Scroll ── -->
+    <div class="metrics-wrapper">
+      <div class="metrics-scroll-container">
+        <div class="metrics-grid">
+          <!-- Original cards -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Today's Income</span>
+              <div class="metric-icon success">💵</div>
+            </div>
+            <div class="metric-value">₹14,820</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span><span>18% vs yesterday</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Today's Expense</span>
+              <div class="metric-icon danger">💸</div>
+            </div>
+            <div class="metric-value">₹8,340</div>
+            <div class="metric-change negative">
+              <span class="metric-arrow">↘</span><span>7% vs yesterday</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Monthly Income</span>
+              <div class="metric-icon success">📈</div>
+            </div>
+            <div class="metric-value">₹3,12,400</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span><span>11% vs last month</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Monthly Expense</span>
+              <div class="metric-icon danger">📉</div>
+            </div>
+            <div class="metric-value">₹2,18,750</div>
+            <div class="metric-change negative">
+              <span class="metric-arrow">↘</span><span>4% vs last month</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Net Profit</span>
+              <div class="metric-icon success">💹</div>
+            </div>
+            <div class="metric-value">₹93,650</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span><span>Healthy margin</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Pending Payments</span>
+              <div class="metric-icon warning">📦</div>
+            </div>
+            <div class="metric-value">₹31,200</div>
+            <div class="metric-change negative">
+              <span class="metric-arrow">↘</span><span>4 vendors</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Low Stock Alerts</span>
+              <div class="metric-icon info">⚠️</div>
+            </div>
+            <div class="metric-value">3</div>
+            <div class="metric-change negative">
+              <span class="metric-arrow">↘</span><span>Critical items</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Weekly Data</span>
+              <div class="metric-icon warning">📆</div>
+            </div>
+            <div class="metric-value">₹89,540</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span
+              ><span>This week's revenue</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Quarterly Data</span>
+              <div class="metric-icon info">📊</div>
+            </div>
+            <div class="metric-value">₹9,28,300</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span><span>Q4 Jan–Mar 26</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Financial Year</span>
+              <div class="metric-icon success">💰</div>
+            </div>
+            <div class="metric-value">₹37,46,800</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span><span>FY 2025-26 YTD</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Previous Year</span>
+              <div class="metric-icon danger">📈</div>
+            </div>
+            <div class="metric-value">₹31,28,400</div>
+            <div class="metric-change neutral">
+              <span class="metric-arrow">→</span><span>FY 2024-25 final</span>
+            </div>
+          </div>
+          <!-- Duplicate for seamless loop -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Today's Income</span>
+              <div class="metric-icon success">💵</div>
+            </div>
+            <div class="metric-value">₹14,820</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span><span>18% vs yesterday</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Today's Expense</span>
+              <div class="metric-icon danger">💸</div>
+            </div>
+            <div class="metric-value">₹8,340</div>
+            <div class="metric-change negative">
+              <span class="metric-arrow">↘</span><span>7% vs yesterday</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Monthly Income</span>
+              <div class="metric-icon success">📈</div>
+            </div>
+            <div class="metric-value">₹3,12,400</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span><span>11% vs last month</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Monthly Expense</span>
+              <div class="metric-icon danger">📉</div>
+            </div>
+            <div class="metric-value">₹2,18,750</div>
+            <div class="metric-change negative">
+              <span class="metric-arrow">↘</span><span>4% vs last month</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Net Profit</span>
+              <div class="metric-icon success">💹</div>
+            </div>
+            <div class="metric-value">₹93,650</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span><span>Healthy margin</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Pending Payments</span>
+              <div class="metric-icon warning">📦</div>
+            </div>
+            <div class="metric-value">₹31,200</div>
+            <div class="metric-change negative">
+              <span class="metric-arrow">↘</span><span>4 vendors</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Low Stock Alerts</span>
+              <div class="metric-icon info">⚠️</div>
+            </div>
+            <div class="metric-value">3</div>
+            <div class="metric-change negative">
+              <span class="metric-arrow">↘</span><span>Critical items</span>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-label">Financial Year</span>
+              <div class="metric-icon success">💰</div>
+            </div>
+            <div class="metric-value">₹37,46,800</div>
+            <div class="metric-change positive">
+              <span class="metric-arrow">↗</span><span>FY 2025-26 YTD</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Active Filter Bar ── -->
+    <div class="active-filter-bar">
+      Showing:
+      <span class="active-filter-tag">{{ activeFilterTag }}</span>
+      <span class="active-filter-tag" *ngIf="activeSessionTag">{{
+        activeSessionTag
+      }}</span>
+      <span class="active-filter-tag" *ngIf="activeCategoryTag">{{
+        activeCategoryTag
+      }}</span>
+      <span class="active-filter-tag" *ngIf="activeDateTag">{{
+        activeDateTag
+      }}</span>
+      <button class="reset-btn" (click)="resetAllFilters()">
+        ↺ Reset Filters
+      </button>
+    </div>
+
+    <!-- ── Filters ── -->
+    <div class="filters-section">
+      <!-- Period -->
+      <div class="filter-group">
+        <span class="filter-group-label">Period</span>
+        <button
+          class="filter-btn"
+          [class.active]="isPeriodActive('daily')"
+          (click)="setPeriod('daily')"
+        >
+          Daily
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isPeriodActive('weekly')"
+          (click)="setPeriod('weekly')"
+        >
+          Weekly
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isPeriodActive('monthly')"
+          (click)="setPeriod('monthly')"
+        >
+          Monthly
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isPeriodActive('quarterly')"
+          (click)="setPeriod('quarterly')"
+        >
+          Quarterly
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isPeriodActive('financial-year')"
+          (click)="setPeriod('financial-year')"
+        >
+          Financial Year
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isPeriodActive('prev-year')"
+          (click)="setPeriod('prev-year')"
+        >
+          Previous Year
+        </button>
+      </div>
+      <div class="divider"></div>
+      <!-- Session -->
+      <div class="filter-group">
+        <span class="filter-group-label">Session</span>
+        <button
+          class="filter-btn"
+          [class.active]="isSessionActive('all-sessions')"
+          (click)="setSession('all-sessions')"
+        >
+          All
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isSessionActive('breakfast')"
+          (click)="setSession('breakfast')"
+        >
+          Breakfast
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isSessionActive('brunch')"
+          (click)="setSession('brunch')"
+        >
+          Brunch
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isSessionActive('lunch')"
+          (click)="setSession('lunch')"
+        >
+          Lunch
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isSessionActive('snacks')"
+          (click)="setSession('snacks')"
+        >
+          Snacks
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="isSessionActive('dinner')"
+          (click)="setSession('dinner')"
+        >
+          Dinner
+        </button>
+      </div>
+      <div class="divider"></div>
+      <!-- Date Range -->
+      <div class="filter-group">
+        <span class="filter-group-label">Date Range</span>
+        <input
+          type="text"
+          id="dateRangeFilter"
+          class="filter-input"
+          placeholder="Select date range"
+          style="min-width: 190px"
+          readonly
+        />
+      </div>
+      <!-- Category -->
+      <div class="filter-group">
+        <span class="filter-group-label">Category</span>
+        <select
+          class="filter-select"
+          id="categoryFilter"
+          (change)="setCategory($event)"
+        >
+          <option value="all">All Categories</option>
+          <optgroup label="Income">
+            <option value="dine-in">Dine In</option>
+            <option value="online">Online</option>
+            <option value="takeaway">Takeaway</option>
+            <option value="delivery">Delivery</option>
+          </optgroup>
+          <optgroup label="Expense">
+            <option value="rent">Rent</option>
+            <option value="utilities">Utilities</option>
+            <option value="raw-materials">Raw Materials</option>
+            <option value="salaries">Salaries</option>
+            <option value="marketing">Marketing</option>
+            <option value="supplies">Supplies</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+
+    <!-- ── Charts ── -->
+    <div class="charts-section">
+      <div class="chart-row">
+        <div class="chart-card half">
+          <div class="chart-header">
+            <h2 class="chart-title">Income vs Expense</h2>
+            <span class="chart-subtitle">{{ incomeExpenseSubtitle }}</span>
+          </div>
+          <div class="chart-container">
+            <canvas #incomeExpenseCanvas></canvas>
+          </div>
+        </div>
+        <div class="chart-card half">
+          <div class="chart-header">
+            <h2 class="chart-title">Expense Breakdown</h2>
+            <span class="chart-subtitle">{{ expensePieSubtitle }}</span>
+          </div>
+          <div class="chart-container">
+            <canvas #expensePieCanvas></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card full">
+        <div class="chart-header">
+          <h2 class="chart-title">Profit Trend</h2>
+          <span class="chart-subtitle">{{ profitSubtitle }}</span>
+        </div>
+        <div class="chart-controls">
+          <div class="zoom-hint">
+            <span>🖱 Scroll</span> to zoom &nbsp;·&nbsp; <span>Drag</span> to
+            pan &nbsp;·&nbsp; <span>Click legend</span> to toggle series
+          </div>
+          <button class="zoom-reset-btn" (click)="resetZoom()">
+            ↺ Reset Zoom
+          </button>
+        </div>
+        <div class="chart-container large">
+          <canvas #profitCanvas></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Toast -->
+<div
+  class="toast"
+  [class.show]="toastVisible"
+  [class.success]="toastType === 'success'"
+  [class.error]="toastType === 'error'"
+>
+  {{ toastMessage }}
+</div>

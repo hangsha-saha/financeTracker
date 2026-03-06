@@ -1,0 +1,259 @@
+<!-- ══════════════════════════════════════════
+     NAVBAR
+══════════════════════════════════════════ -->
+<nav class="navbar" [class.scrolled]="isScrolled">
+  <div class="nav-inner">
+    <div class="nav-brand" (click)="scrollTo('hero')">
+      <span class="nav-logo-icon">🏠</span>
+      <span class="nav-logo-text">FinanceTracker</span>
+    </div>
+
+    <ul class="nav-links" [class.open]="mobileMenuOpen">
+      <li><a (click)="scrollTo('features')">Features</a></li>
+      <li><a (click)="scrollTo('stats')">Stats</a></li>
+      <li><a (click)="scrollTo('faq')">FAQ</a></li>
+      <li class="nav-mobile-cta">
+        <button class="btn-outline" (click)="goToLogin()">Login</button>
+        <button class="btn-solid"   (click)="goToRegister()">Get Started</button>
+      </li>
+    </ul>
+
+    <div class="nav-cta">
+      <button class="btn-outline" (click)="goToLogin()">Login</button>
+      <button class="btn-solid"   (click)="goToRegister()">Get Started Free</button>
+    </div>
+
+    <button class="hamburger" (click)="toggleMobileMenu()"
+      [class.open]="mobileMenuOpen">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     HERO SECTION
+══════════════════════════════════════════ -->
+<section class="hero" id="hero">
+  <div class="hero-bg-shapes">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-badge">🚀 Built for Restaurant Owners</div>
+    <h1 class="hero-title">
+      Run Your Restaurant<br>
+      <span class="hero-highlight">Finances Smarter</span>
+    </h1>
+    <p class="hero-subtitle">
+      Track income, manage expenses, generate bills, control inventory,
+      and pay your team — all in one beautifully simple dashboard.
+    </p>
+    <div class="hero-actions">
+      <button class="hero-btn-primary" (click)="goToRegister()">
+        Start for Free
+        <span class="btn-arrow">→</span>
+      </button>
+      <button class="hero-btn-secondary" (click)="goToLogin()">
+        Sign In
+      </button>
+    </div>
+    <div class="hero-trust">
+      <span>✅ No credit card required</span>
+      <span>✅ Setup in 2 minutes</span>
+      <span>✅ Free forever plan</span>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="dashboard-mockup">
+      <div class="mockup-bar">
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
+        <span class="mockup-title">FinanceTracker Dashboard</span>
+      </div>
+      <div class="mockup-body">
+        <div class="mockup-cards">
+          <div class="mockup-card green">
+            <div class="mc-label">Today's Revenue</div>
+            <div class="mc-value">₹18,450</div>
+            <div class="mc-change">↑ 12%</div>
+          </div>
+          <div class="mockup-card red">
+            <div class="mc-label">Expenses</div>
+            <div class="mc-value">₹6,200</div>
+            <div class="mc-change">↓ 4%</div>
+          </div>
+          <div class="mockup-card blue">
+            <div class="mc-label">Net Profit</div>
+            <div class="mc-value">₹12,250</div>
+            <div class="mc-change">↑ 8%</div>
+          </div>
+        </div>
+        <div class="mockup-chart">
+          <div class="chart-label">Weekly Revenue</div>
+          <div class="chart-bars">
+            <div class="chart-bar" style="height:55%"><span>Mon</span></div>
+            <div class="chart-bar" style="height:75%"><span>Tue</span></div>
+            <div class="chart-bar" style="height:60%"><span>Wed</span></div>
+            <div class="chart-bar" style="height:90%"><span>Thu</span></div>
+            <div class="chart-bar" style="height:70%"><span>Fri</span></div>
+            <div class="chart-bar active" style="height:100%"><span>Sat</span></div>
+            <div class="chart-bar" style="height:80%"><span>Sun</span></div>
+          </div>
+        </div>
+        <div class="mockup-table">
+          <div class="mt-row header">
+            <span>Item</span><span>Qty</span><span>Amount</span>
+          </div>
+          <div class="mt-row"><span>Biryani</span><span>12</span><span>₹4,200</span></div>
+          <div class="mt-row"><span>Butter Chicken</span><span>8</span><span>₹2,800</span></div>
+          <div class="mt-row"><span>Naan</span><span>30</span><span>₹900</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     FEATURES SECTION
+══════════════════════════════════════════ -->
+<section class="features-section" id="features">
+  <div class="section-container">
+    <div class="section-badge">✨ Everything You Need</div>
+    <h2 class="section-title">Powerful Features for<br>Restaurant Finance</h2>
+    <p class="section-subtitle">
+      From daily billing to monthly reports — FinanceTracker has every tool
+      your restaurant needs to stay financially healthy.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card" *ngFor="let f of FEATURES">
+        <div class="feature-icon-wrap" [style.background]="f.color + '18'">
+          <span class="feature-icon">{{ f.icon }}</span>
+        </div>
+        <h3 class="feature-title">{{ f.title }}</h3>
+        <p class="feature-desc">{{ f.desc }}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     STATS SECTION
+══════════════════════════════════════════ -->
+<section class="stats-section" id="stats">
+  <div id="statsSection" class="section-container">
+    <div class="stats-grid">
+      <div class="stat-card" *ngFor="let c of counters">
+        <div class="stat-value">
+          {{ c.current }}{{ c.suffix }}
+        </div>
+        <div class="stat-label">{{ c.label }}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     HOW IT WORKS
+══════════════════════════════════════════ -->
+<section class="how-section">
+  <div class="section-container">
+    <div class="section-badge">🛠 Simple Setup</div>
+    <h2 class="section-title">Up and Running<br>in 3 Easy Steps</h2>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-number">01</div>
+        <div class="step-icon">📝</div>
+        <h3>Create Your Account</h3>
+        <p>Register with your restaurant name, email, and a secure password. Takes under 2 minutes.</p>
+      </div>
+      <div class="step-connector">→</div>
+      <div class="step-card">
+        <div class="step-number">02</div>
+        <div class="step-icon">⚙️</div>
+        <h3>Set Up Your Restaurant</h3>
+        <p>Add your menu items, vendors, and employee details. Import existing data with one click.</p>
+      </div>
+      <div class="step-connector">→</div>
+      <div class="step-card">
+        <div class="step-number">03</div>
+        <div class="step-icon">🚀</div>
+        <h3>Start Tracking</h3>
+        <p>Generate bills, track expenses, and watch your dashboard come alive with real-time data.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     FAQ SECTION
+══════════════════════════════════════════ -->
+<section class="faq-section" id="faq">
+  <div class="section-container">
+    <div class="section-badge">❓ Common Questions</div>
+    <h2 class="section-title">Frequently Asked<br>Questions</h2>
+
+    <div class="faq-list">
+      <div class="faq-item"
+        *ngFor="let faq of FAQS; let i = index"
+        [class.open]="activeFaq === i"
+        (click)="toggleFaq(i)">
+        <div class="faq-question">
+          <span>{{ faq.q }}</span>
+          <span class="faq-chevron">{{ activeFaq === i ? '▲' : '▼' }}</span>
+        </div>
+        <div class="faq-answer" *ngIf="activeFaq === i">
+          {{ faq.a }}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     CTA SECTION
+══════════════════════════════════════════ -->
+<section class="cta-section">
+  <div class="cta-inner">
+    <div class="cta-shapes">
+      <div class="cta-shape-1"></div>
+      <div class="cta-shape-2"></div>
+    </div>
+    <h2 class="cta-title">Ready to Take Control<br>of Your Restaurant Finances?</h2>
+    <p class="cta-subtitle">Join hundreds of restaurant owners who trust FinanceTracker every day.</p>
+    <div class="cta-actions">
+      <button class="cta-btn-primary" (click)="goToRegister()">
+        Create Free Account →
+      </button>
+      <button class="cta-btn-secondary" (click)="goToLogin()">
+        Sign In Instead
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     FOOTER
+══════════════════════════════════════════ -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="footer-logo">🏠 FinanceTracker</span>
+      <p>Built for restaurant owners who want clarity over chaos.</p>
+    </div>
+    <div class="footer-links">
+      <span (click)="scrollTo('features')">Features</span>
+      <span (click)="scrollTo('faq')">FAQ</span>
+      <span (click)="goToLogin()">Login</span>
+      <span (click)="goToRegister()">Register</span>
+    </div>
+    <div class="footer-copy">
+      © 2026 FinanceTracker. All rights reserved.
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,120 @@
+[
+  {
+    "userId": 1,
+    "monthlyData": [
+      {
+        "date": "2025-09-01",
+        "month": "Sep 2025",
+        "income": 180000,
+        "expense": 110000,
+        "breakdown": {
+          "Salaries": 38000,
+          "Raw Materials": 28000,
+          "Rent": 25000,
+          "Utilities": 7000,
+          "Marketing": 7000,
+          "Supplies": 5000
+        }
+      },
+      {
+        "date": "2025-10-01",
+        "month": "Oct 2025",
+        "income": 195000,
+        "expense": 125000,
+        "breakdown": {
+          "Salaries": 40000,
+          "Raw Materials": 33000,
+          "Rent": 25000,
+          "Utilities": 8000,
+          "Marketing": 12000,
+          "Supplies": 7000
+        }
+      },
+      {
+        "date": "2025-11-01",
+        "month": "Nov 2025",
+        "income": 210000,
+        "expense": 118000,
+        "breakdown": {
+          "Salaries": 42000,
+          "Raw Materials": 29000,
+          "Rent": 25000,
+          "Utilities": 7500,
+          "Marketing": 9000,
+          "Supplies": 5500
+        }
+      },
+      {
+        "date": "2025-12-01",
+        "month": "Dec 2025",
+        "income": 230000,
+        "expense": 140000,
+        "breakdown": {
+          "Salaries": 45000,
+          "Raw Materials": 38000,
+          "Rent": 25000,
+          "Utilities": 9000,
+          "Marketing": 14000,
+          "Supplies": 9000
+        }
+      },
+      {
+        "date": "2026-01-01",
+        "month": "Jan 2026",
+        "income": 215000,
+        "expense": 128000,
+        "breakdown": {
+          "Salaries": 44000,
+          "Raw Materials": 32000,
+          "Rent": 25000,
+          "Utilities": 8200,
+          "Marketing": 11000,
+          "Supplies": 7800
+        }
+      },
+      {
+        "date": "2026-02-01",
+        "month": "Feb 2026",
+        "income": 224650,
+        "expense": 132200,
+        "breakdown": {
+          "Salaries": 45000,
+          "Raw Materials": 30000,
+          "Rent": 35000,
+          "Utilities": 8500,
+          "Marketing": 8200,
+          "Supplies": 5500
+        }
+      }
+    ]
+  },
+  {
+    "userId": 2,
+    "monthlyData": [
+      {
+        "date": "2026-01-01",
+        "month": "Jan 2026",
+        "income": 95000,
+        "expense": 60000,
+        "breakdown": {
+          "Salaries": 25000,
+          "Raw Materials": 18000,
+          "Rent": 12000,
+          "Utilities": 5000
+        }
+      },
+      {
+        "date": "2026-02-01",
+        "month": "Feb 2026",
+        "income": 102000,
+        "expense": 65000,
+        "breakdown": {
+          "Salaries": 26000,
+          "Raw Materials": 20000,
+          "Rent": 12000,
+          "Utilities": 7000
+        }
+      }
+    ]
+  }
+]

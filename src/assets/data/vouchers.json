@@ -1,0 +1,19 @@
+[
+  {
+    "userId": 1,
+    "vouchers": [
+      { "code": "SAVE10",     "type": "percent", "value": 10,  "label": "SAVE10 (10% off)"      },
+      { "code": "FLAT50",     "type": "flat",    "value": 50,  "label": "FLAT50 (₹50 off)"      },
+      { "code": "WELCOME20",  "type": "percent", "value": 20,  "label": "WELCOME20 (20% off)"   },
+      { "code": "SPECIAL100", "type": "flat",    "value": 100, "label": "SPECIAL100 (₹100 off)" },
+      { "code": "VIP15",      "type": "percent", "value": 15,  "label": "VIP15 (15% off)"       }
+    ]
+  },
+  {
+    "userId": 2,
+    "vouchers": [
+      { "code": "WELCOME10", "type": "percent", "value": 10, "label": "WELCOME10 (10% off)" },
+      { "code": "FLAT100",   "type": "flat",    "value": 100,"label": "FLAT100 (₹100 off)"  }
+    ]
+  }
+]

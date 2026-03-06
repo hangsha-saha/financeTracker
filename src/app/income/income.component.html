@@ -1,0 +1,158 @@
+<main class="main-content">
+  <header class="header">
+    <div class="header-content">
+      <h1>Income / Sales</h1>
+      <p>View and filter your restaurant sales records</p>
+    </div>
+    <div class="header-meta">
+      <div class="header-pill">{{ recordCount }}</div>
+      <div class="header-pill">
+        Total: <span class="net-value">{{ headerGross }}</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- Filters — unchanged -->
+    <div class="filters-section">
+      <span class="filter-label">Date</span>
+      <input type="date" class="filter-input"
+        [(ngModel)]="fDate" (change)="applyFilters()">
+
+      <span class="filter-label">Type</span>
+      <select class="filter-select" [(ngModel)]="fType" (change)="applyFilters()">
+        <option value="">All Types</option>
+        <option value="DINE IN">Dine In</option>
+        <option value="ONLINE">Online</option>
+        <option value="TAKEAWAY">Takeaway</option>
+        <option value="DELIVERY">Delivery</option>
+      </select>
+
+      <span class="filter-label">Payment</span>
+      <select class="filter-select" [(ngModel)]="fPayment" (change)="applyFilters()">
+        <option value="">All Payments</option>
+        <option value="CASH">Cash</option>
+        <option value="UPI">UPI</option>
+        <option value="CARD">Card</option>
+      </select>
+
+      <span class="filter-label">Min ₹</span>
+      <input type="number" class="filter-input amt-input"
+        [(ngModel)]="fMin" placeholder="0" min="0" (change)="applyFilters()">
+
+      <span class="filter-label">Max ₹</span>
+      <input type="number" class="filter-input amt-input"
+        [(ngModel)]="fMax" placeholder="Any" min="0" (change)="applyFilters()">
+
+      <input type="text" class="filter-input search-input"
+        [(ngModel)]="fSearch" placeholder="🔍  Search records..."
+        (input)="applyFilters()">
+
+      <button class="clear-btn" (click)="clearFilters()">↺ Clear</button>
+    </div>
+
+    <!-- Active filter tags -->
+    <div class="active-filters" *ngIf="hasActiveFilters">
+      <span class="af-label">Active filters:</span>
+      <span class="filter-tag" *ngFor="let tag of filterTags">{{ tag }}</span>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-state" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <span>Loading income data...</span>
+    </div>
+
+    <!-- Error -->
+    <div class="error-state" *ngIf="apiError && !isLoading">
+      <div>⚠️ {{ apiError }}</div>
+      <button class="clear-btn" (click)="loadIncome()">Retry</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-section" *ngIf="!isLoading && !apiError">
+      <div class="table-wrapper">
+        <table *ngIf="pagedItems.length > 0">
+          <thead>
+            <tr>
+              <th (click)="setSort('date')"
+                [class.sort-asc]="isSortActive('date') && sortDir==='asc'"
+                [class.sort-desc]="isSortActive('date') && sortDir==='desc'">
+                Date <span class="si">{{ getSortIcon('date') }}</span>
+              </th>
+              <th (click)="setSort('type')"
+                [class.sort-asc]="isSortActive('type') && sortDir==='asc'"
+                [class.sort-desc]="isSortActive('type') && sortDir==='desc'">
+                Order Type <span class="si">{{ getSortIcon('type') }}</span>
+              </th>
+              <th (click)="setSort('payment')"
+                [class.sort-asc]="isSortActive('payment') && sortDir==='asc'"
+                [class.sort-desc]="isSortActive('payment') && sortDir==='desc'">
+                Payment <span class="si">{{ getSortIcon('payment') }}</span>
+              </th>
+              <th (click)="setSort('gross')"
+                [class.sort-asc]="isSortActive('gross') && sortDir==='asc'"
+                [class.sort-desc]="isSortActive('gross') && sortDir==='desc'">
+                Amount (₹) <span class="si">{{ getSortIcon('gross') }}</span>
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr *ngFor="let r of pagedItems">
+              <td>{{ r.date }}</td>
+              <td>
+                <span class="badge" [ngClass]="typeBadgeClass(r.type)">
+                  {{ r.type }}
+                </span>
+              </td>
+              <td>
+                <span class="badge" [ngClass]="payBadgeClass(r.payment)">
+                  {{ r.payment }}
+                </span>
+              </td>
+              <td class="amount amt-gross">{{ inr(r.gross) }}</td>
+            </tr>
+          </tbody>
+
+          <!-- Summary footer -->
+          <tfoot *ngIf="filtered.length > 0">
+            <tr>
+              <td colspan="3" class="foot-label">
+                Total — {{ filtered.length }} record{{ filtered.length !== 1 ? 's' : '' }}
+              </td>
+              <td class="amount amt-gross">{{ inr(totalGross) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <!-- Empty state -->
+        <div class="empty-state" *ngIf="pagedItems.length === 0">
+          <div class="empty-state-icon">🔍</div>
+          <h3>No records match</h3>
+          <p>Try changing your filters or search term</p>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <div class="pagination-left">
+          <span class="pagination-info">Page {{ page }} of {{ totalPages }}</span>
+          <select class="page-size-select" (change)="onPgSizeChange($event)">
+            <option value="10">10 / page</option>
+            <option value="20" selected>20 / page</option>
+            <option value="50">50 / page</option>
+          </select>
+        </div>
+        <div class="pagination-controls">
+          <button class="pg-btn" [disabled]="page === 1" (click)="goToPage(page - 1)">←</button>
+          <button class="pg-btn" *ngFor="let p of pageNumbers"
+            [class.pg-active]="p === page" (click)="goToPage(p)">{{ p }}</button>
+          <button class="pg-btn" [disabled]="page === totalPages" (click)="goToPage(page + 1)">→</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>

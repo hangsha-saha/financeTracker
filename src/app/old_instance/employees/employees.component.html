@@ -1,0 +1,477 @@
+<main class="main-content">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <h1>Employees</h1>
+      <p>Manage salaries &amp; payments</p>
+    </div>
+    <button class="header-action" (click)="openAddModal()">
+      <span>+</span><span>Add Employee</span>
+    </button>
+  </header>
+
+  <div class="content">
+
+    <!-- ── Loading ── -->
+    <div class="loading-state" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <span>Loading employees...</span>
+    </div>
+
+    <!-- ── Error ── -->
+    <div class="error-state" *ngIf="apiError && !isLoading">
+      <div>⚠️ {{ apiError }}</div>
+      <button class="clear-btn" (click)="loadEmployees()">Retry</button>
+    </div>
+
+    <!-- ── Main content ── -->
+    <ng-container *ngIf="!isLoading && !apiError">
+
+      <!-- Filters -->
+      <div class="filters-section">
+        <input type="text" class="search-input"
+          placeholder="Search by name or role..."
+          [(ngModel)]="searchText" (input)="applyFilters()">
+
+        <select class="filter-select" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          <option value="all">All Status</option>
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+        </select>
+
+        <select class="filter-select" [(ngModel)]="deptFilter" (change)="applyFilters()">
+          <option value="all">All Departments</option>
+          <option *ngFor="let d of DEPTS" [value]="d">{{ d }}</option>
+        </select>
+
+        <select class="filter-select" [(ngModel)]="roleFilter" (change)="applyFilters()">
+          <option value="all">All Roles</option>
+          <option *ngFor="let r of ROLES" [value]="r">{{ r }}</option>
+        </select>
+
+        <select class="filter-select" [(ngModel)]="monthFilter" (change)="applyFilters()">
+          <option value="all">All Months</option>
+          <option *ngFor="let m of months" [value]="m.value">{{ m.label }}</option>
+        </select>
+
+        <span class="filter-count">
+          Showing {{ filtered.length }} employee{{ filtered.length !== 1 ? 's' : '' }}
+        </span>
+      </div>
+
+      <!-- Table -->
+      <div class="table-section">
+        <div class="table-wrapper">
+          <table *ngIf="pagedItems.length > 0">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th>Salary (₹)</th>
+                <th>Month</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let emp of pagedItems">
+                <td>
+                  <span class="employee-name">{{ emp.name }}</span>
+                </td>
+                <td>
+                  {{ emp.role }}
+                  <span class="cred-badge" *ngIf="emp.username"
+                    title="Has login credentials">🔑</span>
+                </td>
+                <td>
+                  <span class="dept-badge" [ngClass]="DEPT_CLASS[emp.dept]">
+                    {{ emp.dept }}
+                  </span>
+                </td>
+                <td>
+                  <span class="salary">₹{{ emp.salary.toLocaleString('en-IN') }}</span>
+                </td>
+                <td>{{ formatMonth(emp.month) }}</td>
+                <td>
+                  <span class="status-badge"
+                    [class.status-paid]="emp.status === 'paid'"
+                    [class.status-pending]="emp.status === 'pending'">
+                    {{ emp.status === 'paid' ? 'Paid' : 'Pending' }}
+                  </span>
+                </td>
+                <td>
+                  <div class="actions">
+                    <button class="action-btn" title="Edit"
+                      (click)="openEditModal(emp.id)">✏️</button>
+                    <button class="action-btn salary" title="Pay Salary"
+                      (click)="openSalaryModal(emp.id)">💰</button>
+                    <button class="action-btn success" title="Mark as paid"
+                      *ngIf="emp.status === 'pending'"
+                      (click)="markPaid(emp.id)">✓</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Empty state -->
+          <div class="no-results" *ngIf="pagedItems.length === 0">
+            <div style="font-size:36px;margin-bottom:12px">👥</div>
+            <div>No employees match your filters.</div>
+          </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <span class="pagination-info">
+            Page {{ page }} of {{ totalPages }}
+            ({{ filtered.length }} employee{{ filtered.length !== 1 ? 's' : '' }})
+          </span>
+          <div class="pagination-controls">
+            <button class="pagination-btn"
+              [disabled]="page === 1" (click)="prevPage()">←</button>
+            <button class="pagination-btn"
+              [disabled]="page === totalPages" (click)="nextPage()">→</button>
+          </div>
+        </div>
+      </div>
+
+    </ng-container>
+    <!-- end main content -->
+
+  </div>
+</main>
+
+<!-- ══════ ADD / EDIT MODAL ══════ -->
+<div class="modal-overlay" [class.active]="showModal" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h2 class="modal-title">
+        {{ isEditing ? 'Edit Employee' : 'Add New Employee' }}
+      </h2>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Row 1: Name + Phone -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" class="form-input" [class.input-error]="errName"
+            placeholder="e.g. Rajesh Kumar" [(ngModel)]="fName">
+          <span class="form-error" *ngIf="errName">Name is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number *</label>
+          <input type="tel" class="form-input" [class.input-error]="errPhone"
+            placeholder="+91 98765 43210" [(ngModel)]="fPhone">
+          <span class="form-error" *ngIf="errPhone">Phone is required</span>
+        </div>
+      </div>
+
+      <!-- Row 2: Email + Joining -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-input" [class.input-error]="errEmail"
+            placeholder="employee@email.com" [(ngModel)]="fEmail">
+          <span class="form-error" *ngIf="errEmail">Email is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date of Joining *</label>
+          <input type="date" class="form-input" [class.input-error]="errJoining"
+            [(ngModel)]="fJoining">
+          <span class="form-error" *ngIf="errJoining">Joining date is required</span>
+        </div>
+      </div>
+
+      <!-- Row 3: Role + Department -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Role *</label>
+          <select class="form-select" [class.input-error]="errRole"
+            [(ngModel)]="fRole" (change)="onRoleChange()">
+            <option value="">Select Role</option>
+            <option *ngFor="let r of ROLES" [value]="r">{{ r }}</option>
+          </select>
+          <span class="form-error" *ngIf="errRole">Role is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Department *</label>
+          <select class="form-select" [class.input-error]="errDept"
+            [(ngModel)]="fDept">
+            <option value="">Select Department</option>
+            <option *ngFor="let d of DEPTS" [value]="d">{{ d }}</option>
+          </select>
+          <span class="form-error" *ngIf="errDept">Department is required</span>
+        </div>
+      </div>
+
+      <!-- Row 4: Salary + Month -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Monthly Salary (₹) *</label>
+          <input type="number" class="form-input" [class.input-error]="errSalary"
+            placeholder="0" min="0" step="0.01" [(ngModel)]="fSalary">
+          <span class="form-error" *ngIf="errSalary">Valid salary is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pay Month *</label>
+          <input type="month" class="form-input" [class.input-error]="errMonth"
+            [(ngModel)]="fMonth">
+          <span class="form-error" *ngIf="errMonth">Pay month is required</span>
+        </div>
+      </div>
+
+      <!-- Payment Status -->
+      <div class="form-group">
+        <label class="form-label">Payment Status</label>
+        <select class="form-select" [(ngModel)]="fStatus">
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+        </select>
+      </div>
+
+      <!-- Credentials Section -->
+      <div class="credentials-section" *ngIf="needsCredentials">
+        <div class="credentials-header">
+          <span class="credentials-icon">🔑</span>
+          <span>Login Credentials</span>
+          <span class="credentials-hint">Required for {{ fRole }}</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Username *</label>
+          <input type="text" class="form-input" [class.input-error]="errUsername"
+            placeholder="e.g. john.doe" [(ngModel)]="fUsername"
+            autocomplete="new-password">
+          <span class="form-error" *ngIf="errUsername">Username is required</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password *</label>
+          <div class="password-wrapper">
+            <input [type]="showPassword ? 'text' : 'password'"
+              class="form-input password-input"
+              [class.input-error]="errPassword"
+              placeholder="Enter password"
+              [(ngModel)]="fPassword"
+              autocomplete="new-password">
+            <button type="button" class="eye-btn" (click)="togglePassword()"
+              [title]="showPassword ? 'Hide password' : 'Show password'">
+              <svg *ngIf="showPassword" xmlns="http://www.w3.org/2000/svg"
+                width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+              <svg *ngIf="!showPassword" xmlns="http://www.w3.org/2000/svg"
+                width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <span class="form-error" *ngIf="errPassword">Password is required</span>
+        </div>
+      </div>
+
+    </div><!-- /modal-body -->
+
+    <div class="modal-footer">
+      <button class="btn btn-danger" *ngIf="isEditing"
+        (click)="confirmDelete(editingId!)">🗑 Delete</button>
+      <div class="modal-footer-right">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveEmployee()">
+          {{ isEditing ? 'Save Changes' : 'Add Employee' }}
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════ CONFIRM DELETE ══════ -->
+<div class="confirm-overlay" [class.active]="showConfirm">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">Delete Employee?</div>
+    <div class="confirm-message">{{ confirmMsg }}</div>
+    <div class="confirm-btns">
+      <button class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
+      <button class="btn btn-danger" (click)="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SALARY PAYMENT MODAL ══════ -->
+<div class="modal-overlay salary-overlay" [class.active]="showSalaryModal"
+  (click)="closeSalaryModal()">
+  <div class="modal-content salary-modal" (click)="$event.stopPropagation()">
+
+    <div class="modal-header salary-header">
+      <div class="salary-header-left">
+        <div class="salary-emp-avatar">
+          {{ salaryEmpName.charAt(0).toUpperCase() }}
+        </div>
+        <div>
+          <h2 class="modal-title">Pay Salary</h2>
+          <div class="salary-emp-meta">
+            {{ salaryEmpName }} · {{ salaryEmpRole }} · {{ salaryEmpDept }}
+          </div>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeSalaryModal()">✕</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="salary-tabs">
+      <button class="salary-tab" [class.active]="!showSalaryHistory"
+        (click)="showSalaryHistory = false">
+        💳 Pay Salary
+      </button>
+      <button class="salary-tab" [class.active]="showSalaryHistory"
+        (click)="showSalaryHistory = true">
+        📋 Payment History
+        <span class="history-count" *ngIf="currentEmpSalaryHistory.length > 0">
+          {{ currentEmpSalaryHistory.length }}
+        </span>
+      </button>
+    </div>
+
+    <!-- Pay Form -->
+    <div class="modal-body" *ngIf="!showSalaryHistory">
+
+      <div class="salary-amount-banner">
+        <div class="sab-left">
+          <span class="sab-label">Monthly Salary</span>
+          <span class="sab-value">₹{{ salaryAmount?.toLocaleString('en-IN') }}</span>
+        </div>
+        <div class="sab-right">
+          <span class="sab-label">Total Paid (All months)</span>
+          <span class="sab-total">
+            ₹{{ currentEmpTotalPaid.toLocaleString('en-IN') }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Salary Amount (₹) *</label>
+          <input type="number" class="form-input"
+            [class.input-error]="errSalaryAmount"
+            placeholder="Enter amount" min="0"
+            [(ngModel)]="salaryAmount">
+          <span class="form-error" *ngIf="errSalaryAmount">
+            Valid amount required
+          </span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pay Month *</label>
+          <input type="month" class="form-input"
+            [class.input-error]="errSalaryMonth"
+            [(ngModel)]="salaryMonth">
+          <span class="form-error" *ngIf="errSalaryMonth">Month is required</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Paid On *</label>
+          <input type="date" class="form-input"
+            [class.input-error]="errSalaryPaidOn"
+            [(ngModel)]="salaryPaidOn">
+          <span class="form-error" *ngIf="errSalaryPaidOn">Date is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Payment Mode *</label>
+          <select class="form-select"
+            [class.input-error]="errSalaryPayMode"
+            [(ngModel)]="salaryPayMode">
+            <option value="">Select Mode</option>
+            <option *ngFor="let m of PAY_MODES" [value]="m">{{ m }}</option>
+          </select>
+          <span class="form-error" *ngIf="errSalaryPayMode">
+            Payment mode required
+          </span>
+        </div>
+      </div>
+
+      <div class="duplicate-warning"
+        *ngIf="salaryMonth && currentEmpSalaryHistory.length > 0 &&
+               currentEmpSalaryHistory[0].month === salaryMonth">
+        ⚠️ Salary for {{ formatMonth(salaryMonth) }} may already be recorded.
+        Check history before proceeding.
+      </div>
+
+    </div><!-- /pay form -->
+
+    <!-- History Panel -->
+    <div class="salary-history" *ngIf="showSalaryHistory">
+      <div class="history-empty" *ngIf="currentEmpSalaryHistory.length === 0">
+        <div style="font-size:36px;margin-bottom:8px">📋</div>
+        <div>No salary payments recorded yet.</div>
+      </div>
+      <div class="history-list" *ngIf="currentEmpSalaryHistory.length > 0">
+        <div class="history-summary">
+          <span>
+            {{ currentEmpSalaryHistory.length }}
+            payment{{ currentEmpSalaryHistory.length !== 1 ? 's' : '' }}
+          </span>
+          <span class="history-total">
+            Total: ₹{{ currentEmpTotalPaid.toLocaleString('en-IN') }}
+          </span>
+        </div>
+        <div class="history-item" *ngFor="let rec of currentEmpSalaryHistory">
+          <div class="history-item-left">
+            <div class="history-month">{{ formatMonth(rec.month) }}</div>
+            <div class="history-date">Paid on {{ fmtDate(rec.paidOn) }}</div>
+          </div>
+          <div class="history-item-right">
+            <div class="history-amount">
+              ₹{{ rec.salary.toLocaleString('en-IN') }}
+            </div>
+            <div class="history-mode">{{ rec.paymentMode }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer" *ngIf="!showSalaryHistory">
+      <div class="modal-footer-right">
+        <button class="btn btn-secondary" (click)="closeSalaryModal()">Cancel</button>
+        <button class="btn btn-salary" (click)="saveSalary()">
+          💰 Confirm Payment
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer" *ngIf="showSalaryHistory">
+      <div class="modal-footer-right">
+        <button class="btn btn-secondary" (click)="closeSalaryModal()">Close</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════ TOAST ══════ -->
+<div class="toast"
+  [class.show]="toastVisible"
+  [class.success]="toastType === 'success'"
+  [class.danger]="toastType === 'danger'"
+  [class.info]="toastType === 'info'">
+  <span *ngIf="toastType === 'success'">✅</span>
+  <span *ngIf="toastType === 'danger'">🗑️</span>
+  <span *ngIf="toastType === 'info'">ℹ️</span>
+  {{ toastMsg }}
+</div>

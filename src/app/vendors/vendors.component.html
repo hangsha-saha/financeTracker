@@ -1,0 +1,336 @@
+<main class="main-content">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <h1>Vendors</h1>
+      <p>Manage vendor payments</p>
+    </div>
+    <button class="header-action" (click)="openAddModal()">
+      <span>+</span><span>Add Vendor</span>
+    </button>
+  </header>
+
+  <div class="content">
+
+    <!-- Search & Filter -->
+    <div class="search-section">
+      <input type="text" class="search-input"
+        placeholder="Search by vendor name or contact..."
+        [(ngModel)]="searchText" (input)="applyFilters()">
+
+      <span class="filter-label">Status:</span>
+      <select class="filter-select" [(ngModel)]="statusFilter" (change)="applyFilters()">
+        <option value="all">All Vendors</option>
+        <option value="pending">Pending</option>
+        <option value="cleared">Cleared</option>
+      </select>
+
+      <span class="filter-count">
+        {{ filtered.length }} vendor{{ filtered.length !== 1 ? 's' : '' }}
+      </span>
+    </div>
+
+    <!-- Table -->
+    <div class="table-section">
+      <div class="table-wrapper">
+
+        <!-- Loading state -->
+        <div class="loading-state" *ngIf="isLoading">
+          <div class="spinner"></div>
+          <span>Loading vendors...</span>
+        </div>
+
+        <!-- Error state -->
+        <div class="error-state" *ngIf="apiError && !isLoading">
+          <div>⚠️ {{ apiError }}</div>
+          <button class="btn btn-secondary" (click)="loadVendors()">Retry</button>
+        </div>
+
+        <!-- Table -->
+        <table *ngIf="!isLoading && !apiError">
+          <thead>
+            <tr>
+              <th>Vendor Name</th>
+              <th>Contact</th>
+              <th>Category</th>
+              <th>City</th>
+              <th>Pending (₹)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let v of pagedItems">
+              <td><span class="vendor-name">{{ v.name }}</span></td>
+              <td>
+                <div class="contact-cell">
+                  <span>{{ v.contact }}</span>
+                  <span class="contact-email">{{ v.email }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="category-badge">{{ getCategoryDisplayName(v.category) }}</span>
+              </td>
+              <td>{{ v.city }}</td>
+              <td>
+                <span class="pending-amount" *ngIf="v.pending > 0">
+                  ₹{{ v.pending.toLocaleString('en-IN') }}
+                </span>
+                <span class="pending-cleared" *ngIf="v.pending === 0">Cleared</span>
+              </td>
+              <td>
+                <div class="actions">
+                  <button class="action-btn" title="Edit" (click)="openEditModal(v.id)">✏️</button>
+                  <button class="action-btn success" title="Mark as paid"
+                    *ngIf="v.pending > 0"
+                    (click)="openMarkPaidConfirm(v.id)">✓</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Empty state -->
+        <div class="no-results" *ngIf="!isLoading && !apiError && filtered.length === 0">
+          <div style="font-size:36px;margin-bottom:12px">🏪</div>
+          <div>No vendors match your search.</div>
+        </div>
+        <!-- Pagination -->
+        <div class="pagination" *ngIf="!isLoading && !apiError && filtered.length > 0">
+          <span class="pagination-info">
+            Showing {{ (page - 1) * PAGE_SIZE + 1 }}–{{ Math.min(page * PAGE_SIZE, filtered.length) }}
+            of {{ filtered.length }} vendor{{ filtered.length !== 1 ? 's' : '' }}
+          </span>
+          <div class="pagination-controls">
+            <button class="pagination-btn" [disabled]="page === 1" (click)="prevPage()" title="Previous">←</button>
+            <button class="pagination-btn"
+              *ngFor="let p of pageNumbers"
+              [class.active]="p === page"
+              (click)="goToPage(p)">
+              {{ p }}
+            </button>
+            <button class="pagination-btn" [disabled]="page === totalPages" (click)="nextPage()" title="Next">→</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ══════ ADD VENDOR MODAL ══════ -->
+<div class="modal-overlay" [class.active]="showAddModal" (click)="closeAddModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h2 class="modal-title">Add New Vendor</h2>
+      <button class="modal-close" (click)="closeAddModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Row 1: Name + Contact -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Vendor Name *</label>
+          <input type="text" class="form-input" [class.input-error]="errAName"
+            placeholder="e.g. Fresh Farms Pvt Ltd" [(ngModel)]="aName">
+          <span class="form-error" *ngIf="errAName">Vendor name is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contact Number *</label>
+          <input type="tel" class="form-input" [class.input-error]="errAContact"
+            placeholder="+91 98765 43210" [(ngModel)]="aContact">
+          <span class="form-error" *ngIf="errAContact">Contact is required</span>
+        </div>
+      </div>
+
+      <!-- Row 2: Email + City -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-input" [class.input-error]="errAEmail"
+            placeholder="vendor@email.com" [(ngModel)]="aEmail">
+          <span class="form-error" *ngIf="errAEmail">Valid email is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">City *</label>
+          <input type="text" class="form-input" [class.input-error]="errACity"
+            placeholder="e.g. Mumbai" [(ngModel)]="aCity">
+          <span class="form-error" *ngIf="errACity">City is required</span>
+        </div>
+      </div>
+
+      <!-- Category -->
+      <div class="form-group">
+        <label class="form-label">Product Category *</label>
+        <select class="form-select" [class.input-error]="errACategory"
+          [(ngModel)]="aCategory" (change)="onAddCategoryChange()">
+          <option value="">Select Category</option>
+          <option *ngFor="let c of KNOWN_CATEGORIES" [value]="c">{{ c }}</option>
+          <option value="Other">Other</option>
+        </select>
+        <span class="form-error" *ngIf="errACategory">Category is required</span>
+      </div>
+
+      <!-- Other category field -->
+      <div class="form-group other-cat-group" *ngIf="addNeedsOtherCat">
+        <label class="form-label">Specify Category *</label>
+        <input type="text" class="form-input" [class.input-error]="errAOtherCat"
+          placeholder="Enter your custom category..." [(ngModel)]="aOtherCat">
+        <span class="form-error" *ngIf="errAOtherCat">Please specify the category</span>
+      </div>
+
+      <!-- Pending amount -->
+      <div class="form-group">
+        <label class="form-label">Initial Pending Amount (₹)</label>
+        <input type="number" class="form-input"
+          placeholder="0.00" step="0.01" min="0" [(ngModel)]="aPending">
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <label class="form-label">Notes (Optional)</label>
+        <textarea class="form-textarea" placeholder="Add any notes..."
+          [(ngModel)]="aNotes"></textarea>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <div class="modal-footer-right">
+        <button class="btn btn-secondary" (click)="closeAddModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveAdd()">Add Vendor</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════ EDIT VENDOR MODAL ══════ -->
+<div class="modal-overlay" [class.active]="showEditModal" (click)="closeEditModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h2 class="modal-title">Edit Vendor</h2>
+      <button class="modal-close" (click)="closeEditModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Row 1: Name + Contact -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Vendor Name *</label>
+          <input type="text" class="form-input" [class.input-error]="errEName"
+            [(ngModel)]="eName">
+          <span class="form-error" *ngIf="errEName">Vendor name is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contact Number *</label>
+          <input type="tel" class="form-input" [class.input-error]="errEContact"
+            [(ngModel)]="eContact">
+          <span class="form-error" *ngIf="errEContact">Contact is required</span>
+        </div>
+      </div>
+
+      <!-- Row 2: Email + City -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-input" [class.input-error]="errEEmail"
+            [(ngModel)]="eEmail">
+          <span class="form-error" *ngIf="errEEmail">Valid email is required</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">City *</label>
+          <input type="text" class="form-input" [class.input-error]="errECity"
+            [(ngModel)]="eCity">
+          <span class="form-error" *ngIf="errECity">City is required</span>
+        </div>
+      </div>
+
+      <!-- Category -->
+      <div class="form-group">
+        <label class="form-label">Product Category *</label>
+        <select class="form-select" [class.input-error]="errECategory"
+          [(ngModel)]="eCategory" (change)="onEditCategoryChange()">
+          <option value="">Select Category</option>
+          <option *ngFor="let c of KNOWN_CATEGORIES" [value]="c">{{ c }}</option>
+          <option value="Other">Other</option>
+        </select>
+        <span class="form-error" *ngIf="errECategory">Category is required</span>
+      </div>
+
+      <!-- Other category field -->
+      <div class="form-group other-cat-group" *ngIf="editNeedsOtherCat">
+        <label class="form-label">Specify Category *</label>
+        <input type="text" class="form-input" [class.input-error]="errEOtherCat"
+          [(ngModel)]="eOtherCat">
+        <span class="form-error" *ngIf="errEOtherCat">Please specify the category</span>
+      </div>
+
+      <!-- Pending amount -->
+      <div class="form-group">
+        <label class="form-label">Pending Amount (₹)</label>
+        <input type="number" class="form-input"
+          step="0.01" min="0" [(ngModel)]="ePending">
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <label class="form-label">Notes (Optional)</label>
+        <textarea class="form-textarea" [(ngModel)]="eNotes"></textarea>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-danger" (click)="openDeleteConfirm()">🗑 Delete Vendor</button>
+      <div class="modal-footer-right">
+        <button class="btn btn-secondary" (click)="closeEditModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveEdit()">Save Changes</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════ DELETE CONFIRM ══════ -->
+<div class="confirm-overlay" [class.active]="showConfirm">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">Delete Vendor?</div>
+    <div class="confirm-message">{{ confirmMsg }}</div>
+    <div class="confirm-btns">
+      <button class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
+      <button class="btn btn-danger"    (click)="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MARK PAID CONFIRM ══════ -->
+<div class="confirm-overlay" [class.active]="showMarkPaidConfirm">
+  <div class="confirm-box">
+    <div class="confirm-icon">✅</div>
+    <div class="confirm-title">Mark as Paid?</div>
+    <div class="confirm-message">
+      Mark all pending amount for "{{ markPaidVendorName }}" as cleared?
+    </div>
+    <div class="confirm-btns">
+      <button class="btn btn-secondary" (click)="cancelMarkPaid()">Cancel</button>
+      <button class="btn btn-primary"   (click)="doMarkPaid()">Yes, Mark Paid</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TOAST ══════ -->
+<div class="toast"
+  [class.show]="toastVisible"
+  [class.success]="toastType === 'success'"
+  [class.danger]="toastType === 'danger'"
+  [class.info]="toastType === 'info'">
+  <span *ngIf="toastType === 'success'">✅</span>
+  <span *ngIf="toastType === 'danger'">🗑️</span>
+  <span *ngIf="toastType === 'info'">ℹ️</span>
+  {{ toastMsg }}
+</div>

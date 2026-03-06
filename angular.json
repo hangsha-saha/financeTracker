@@ -25,9 +25,15 @@
               "src/assets"
             ],
             "styles": [
-              "src/styles.css"
+              "src/styles.css",
+              "node_modules/flatpickr/dist/flatpickr.min.css"
             ],
-            "scripts": []
+            "scripts": [
+              "node_modules/chart.js/dist/chart.umd.js",
+              "node_modules/hammerjs/hammer.min.js",
+              "node_modules/chartjs-plugin-zoom/dist/chartjs-plugin-zoom.min.js",
+              "node_modules/flatpickr/dist/flatpickr.min.js"
+            ]
           },
           "configurations": {
             "production": {
@@ -94,5 +100,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "bbf741cc-2533-4986-ae62-fa5759c94cc9"
   }
 }

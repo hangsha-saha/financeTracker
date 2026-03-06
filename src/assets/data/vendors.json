@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "Fresh Farms Pvt Ltd",
+    "contact": "+91 98765 43210",
+    "email": "fresh@farms.com",
+    "city": "Mumbai",
+    "category": "Vegetables & Fruits",
+    "pending": 15000,
+    "notes": "Regular supplier"
+  },
+  {
+    "id": 2,
+    "name": "Metro Wholesale",
+    "contact": "+91 87654 32109",
+    "email": "metro@wholesale.com",
+    "city": "Delhi",
+    "category": "Raw Materials",
+    "pending": 0,
+    "notes": "Reliable"
+  }
+]

@@ -1,0 +1,126 @@
+[
+  {
+    "userId": 1,
+    "employees": [
+      {
+        "id": 1,
+        "name": "Rajesh Kumar",
+        "phone": "+91 98765 43210",
+        "email": "rajesh@rest.com",
+        "joining": "2023-01-15",
+        "role": "Head Chef",
+        "dept": "Kitchen",
+        "salary": 25000,
+        "month": "2026-02",
+        "status": "paid"
+      },
+      {
+        "id": 2,
+        "name": "Priya Sharma",
+        "phone": "+91 87654 32109",
+        "email": "priya@rest.com",
+        "joining": "2023-03-10",
+        "role": "Sous Chef",
+        "dept": "Kitchen",
+        "salary": 18000,
+        "month": "2026-02",
+        "status": "paid"
+      },
+      {
+        "id": 3,
+        "name": "Amit Patel",
+        "phone": "+91 76543 21098",
+        "email": "amit@rest.com",
+        "joining": "2024-06-01",
+        "role": "Waiter",
+        "dept": "Front of House",
+        "salary": 12000,
+        "month": "2026-02",
+        "status": "pending",
+        "username": "amit.patel",
+        "password": "Waiter@123"
+      },
+      {
+        "id": 4,
+        "name": "Sunita Devi",
+        "phone": "+91 65432 10987",
+        "email": "sunita@rest.com",
+        "joining": "2024-02-20",
+        "role": "Cashier",
+        "dept": "Front of House",
+        "salary": 14000,
+        "month": "2026-02",
+        "status": "pending"
+      },
+      {
+        "id": 5,
+        "name": "Vikram Singh",
+        "phone": "+91 54321 09876",
+        "email": "vikram@rest.com",
+        "joining": "2023-08-05",
+        "role": "Delivery Boy",
+        "dept": "Delivery",
+        "salary": 10000,
+        "month": "2026-02",
+        "status": "paid"
+      },
+      {
+        "id": 6,
+        "name": "Meena Rao",
+        "phone": "+91 43210 98765",
+        "email": "meena@rest.com",
+        "joining": "2022-11-12",
+        "role": "Manager",
+        "dept": "Management",
+        "salary": 35000,
+        "month": "2026-02",
+        "status": "paid",
+        "username": "meena.rao",
+        "password": "Manager@456"
+      },
+      {
+        "id": 7,
+        "name": "Suresh Nair",
+        "phone": "+91 32109 87654",
+        "email": "suresh@rest.com",
+        "joining": "2025-01-08",
+        "role": "Chef",
+        "dept": "Kitchen",
+        "salary": 16000,
+        "month": "2026-01",
+        "status": "paid"
+      },
+      {
+        "id": 8,
+        "name": "Kavya Thomas",
+        "phone": "+91 21098 76543",
+        "email": "kavya@rest.com",
+        "joining": "2025-04-01",
+        "role": "Kitchen Assistant",
+        "dept": "Kitchen",
+        "salary": 9000,
+        "month": "2026-01",
+        "status": "pending"
+      }
+    ]
+  },
+  {
+    "userId": 2,
+    "employees": [
+      {
+        "id": 1,
+        "name": "Test Employee",
+        "phone": "+91 11111 11111",
+        "email": "test@rest.com",
+        "joining": "2025-01-01",
+        "role": "Manager",
+        "dept": "Management",
+        "salary": 30000,
+        "month": "2026-02",
+        "status": "pending",
+        "username": "test.manager",
+        "password": "Manager@789"
+      }
+    ]
+  }
+]

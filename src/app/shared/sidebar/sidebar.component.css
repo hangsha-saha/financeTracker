@@ -1,0 +1,411 @@
+:host {
+  display: block;
+  height: 100vh;
+  flex-shrink: 0;     /* ← sidebar never shrinks */
+}
+
+.sidebar {
+  width: 240px;
+  height: 100%;       /* ← fill the host */
+  background: var(--dark-sidebar);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;   /* ← sidebar menu scrolls if too many items */
+  flex-shrink: 0;
+}
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: var(--dark-sidebar);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 140, 0, 0.1);
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.sidebar-logo {
+  width: 40px;
+  height: 40px;
+  background: var(--primary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.sidebar-brand h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.sidebar-brand p {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.sidebar-menu {
+  flex: 1;
+  padding: var(--spacing-lg) var(--spacing-md);
+  list-style: none;
+}
+
+.sidebar-menu li {
+  margin-bottom: var(--spacing-sm);
+}
+
+.sidebar-menu button {
+  width: 100%;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.sidebar-menu button:hover {
+  background: rgba(255, 140, 0, 0.15);
+  color: white;
+}
+
+.sidebar-menu button.active {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.sidebar-menu button::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.sidebar-menu li:nth-child(1) button::before {
+  content: "📊";
+}
+.sidebar-menu li:nth-child(2) button::before {
+  content: "💵";
+}
+.sidebar-menu li:nth-child(3) button::before {
+  content: "💸";
+}
+.sidebar-menu li:nth-child(4) button::before {
+  content: "🍽️";
+}
+.sidebar-menu li:nth-child(5) button::before {
+  content: "📦";
+}
+.sidebar-menu li:nth-child(6) button::before {
+  content: "🚚";
+}
+.sidebar-menu li:nth-child(7) button::before {
+  content: "👥";
+}
+.sidebar-menu li:nth-child(8) button::before {
+  content: "📄";
+}
+/* .sidebar-menu li:nth-child(9) button::before {
+  content: "⚙️";
+} */
+.sidebar-menu li:nth-child(9) button::before {
+  content: "📝";
+}
+.sidebar-menu li:nth-child(10) button::before {
+  content: "📋";
+}
+
+.sidebar-footer {
+  padding: var(--spacing-lg) var(--spacing-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  cursor: pointer;
+}
+
+.sidebar-user-avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.sidebar-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-user-info strong {
+  display: block;
+  font-size: 13px;
+}
+
+.sidebar-user-info p {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.sidebar-user-arrow {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 16px;
+}
+/* ── Footer avatar: image support ── */
+.sidebar-user-avatar {
+  position: relative;
+  overflow: hidden;
+  width: 36px;
+  height: 36px;
+  background: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.sidebar-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;    /* ← crops image to fill circle perfectly */
+  border-radius: 50%;
+  display: block;
+}
+
+/* ── Popup avatar: image support ── */
+.spp-avatar-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: white;
+}
+
+.spp-avatar-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+/* ================================================================
+           SIDEBAR PROFILE FOOTER STYLES — COPY-PASTE SECTION
+           ▸ Add this CSS block to every page's <style>.
+           ▸ It overrides sidebar.css's static footer to make it
+             interactive with a hover profile popup.
+        ================================================================ */
+
+/* ---- SIDEBAR PROFILE STYLES START ---- */
+
+.sidebar-footer {
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.sidebar-footer:hover {
+  background: rgba(255, 140, 0, 0.1);
+}
+
+/* Avatar supports both initials and real photo */
+.sidebar-user-avatar {
+  position: relative;
+  overflow: hidden;
+}
+.sidebar-user-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: none;
+}
+.sidebar-user-avatar.has-photo span {
+  display: none;
+}
+.sidebar-user-avatar.has-photo img {
+  display: block;
+}
+
+/* Arrow + hover hint stacked vertically */
+.sidebar-user-arrow-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.sidebar-profile-hint {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.2s ease;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.sidebar-footer:hover .sidebar-profile-hint {
+  color: var(--primary);
+}
+
+/* Profile popup — appears on footer hover */
+.sidebar-profile-popup {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: var(--spacing-md);
+  right: var(--spacing-md);
+  background: #1e1a17;
+  border: 1px solid rgba(255, 140, 0, 0.25);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 9999;
+  animation: sppSlide 0.2s ease;
+}
+.sidebar-footer:hover .sidebar-profile-popup {
+  display: block;
+}
+
+@keyframes sppSlide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.spp-top {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: rgba(255, 140, 0, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+.spp-avatar-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: white;
+}
+.spp-avatar-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+.spp-avatar-wrap.has-photo span {
+  display: none;
+}
+.spp-avatar-wrap.has-photo img {
+  display: block;
+}
+
+.spp-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+.spp-role {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.spp-email {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 1px;
+  word-break: break-all;
+}
+
+.spp-menu {
+  padding: 6px 0;
+}
+.spp-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 10px var(--spacing-lg);
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.spp-item:hover {
+  background: rgba(255, 140, 0, 0.12);
+  color: #fff;
+}
+.spp-item .spp-icon {
+  font-size: 15px;
+  width: 20px;
+  text-align: center;
+}
+.spp-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 4px 0;
+}
+.spp-item.spp-danger:hover {
+  color: var(--danger);
+  background: rgba(239, 83, 80, 0.08);
+}
+
+/* ---- SIDEBAR PROFILE STYLES END ---- */
