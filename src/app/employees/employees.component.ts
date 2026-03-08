@@ -34,23 +34,23 @@ export class EmployeesComponent implements OnInit, OnDestroy {
   roleFilter: string = 'all';
 
   // ── Pagination ──
-  page:            number = 1;
-  readonly PAGE_SIZE      = 6;
+  page:             number = 1;
+  readonly PAGE_SIZE       = 6;
 
   // ── Add/Edit modal ──
-  showModal:    boolean      = false;
-  isEditing:    boolean      = false;
+  showModal:    boolean       = false;
+  isEditing:    boolean       = false;
   editingId:    number | null = null;
 
-  fName:        string       = '';
-  fPhone:       string       = '';
-  fEmail:       string       = '';
-  fJoining:     string       = '';
-  fRole:        string       = '';
+  fName:        string        = '';
+  fPhone:       string        = '';
+  fEmail:       string        = '';
+  fJoining:     string        = '';
+  fRole:        string        = '';
   fSalary:      number | null = null;
-  fUsername:    string       = '';
-  fPassword:    string       = '';
-  showPassword: boolean      = false;
+  fUsername:    string        = '';
+  fPassword:    string        = '';
+  showPassword: boolean       = false;
 
   errName:     boolean = false;
   errPhone:    boolean = false;
@@ -62,23 +62,27 @@ export class EmployeesComponent implements OnInit, OnDestroy {
   errPassword: boolean = false;
 
   // ── Confirm delete ──
-  showConfirm:     boolean      = false;
-  confirmMsg:      string       = '';
+  showConfirm:     boolean       = false;
+  confirmMsg:      string        = '';
   pendingDeleteId: number | null = null;
 
   // ── Salary modal ──
-  showSalaryModal: boolean      = false;
+  showSalaryModal: boolean       = false;
   salaryEmpId:     number | null = null;
-  salaryEmpName:   string       = '';
-  salaryEmpRole:   string       = '';
+  salaryEmpName:   string        = '';
+  salaryEmpRole:   string        = '';
   salaryAmount:    number | null = null;
-  salaryPaidOn:    string       = '';
-  salaryPayMode:   string       = '';
-  isSavingSalary:  boolean      = false;
+  salaryPaidOn:    string        = '';
+  salaryPayMode:   string        = '';
+  isSavingSalary:  boolean       = false;
 
   errSalaryAmount:  boolean = false;
   errSalaryPaidOn:  boolean = false;
   errSalaryPayMode: boolean = false;
+  // ── Salary duplicate check ──
+  salaryAlreadyPaid: boolean = false;
+  salaryPaidRecord:  SalaryRecord | null = null;
+  isCheckingSalary:  boolean = false;
 
   // ── Toast ──
   toastMsg:     string  = '';
@@ -88,9 +92,7 @@ export class EmployeesComponent implements OnInit, OnDestroy {
 
   constructor(private employeesService: EmployeesService) {}
 
-  ngOnInit(): void {
-    this.loadEmployees();
-  }
+  ngOnInit(): void { this.loadEmployees(); }
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
@@ -116,7 +118,6 @@ export class EmployeesComponent implements OnInit, OnDestroy {
         this.isLoading = false;
       }
     });
-
     this.subs.push(sub);
   }
 
@@ -183,17 +184,17 @@ export class EmployeesComponent implements OnInit, OnDestroy {
   }
 
   clearForm(): void {
-    this.fName = ''; this.fPhone = ''; this.fEmail = '';
-    this.fJoining = ''; this.fRole = '';
-    this.fSalary = null;
+    this.fName     = ''; this.fPhone  = ''; this.fEmail   = '';
+    this.fJoining  = ''; this.fRole   = ''; this.fSalary  = null;
     this.fUsername = ''; this.fPassword = '';
     this.showPassword = false;
     this.clearErrors();
   }
 
   clearErrors(): void {
-    this.errName = false; this.errPhone = false; this.errEmail = false;
-    this.errJoining = false; this.errRole = false; this.errSalary = false;
+    this.errName     = false; this.errPhone    = false;
+    this.errEmail    = false; this.errJoining  = false;
+    this.errRole     = false; this.errSalary   = false;
     this.errUsername = false; this.errPassword = false;
   }
 
@@ -203,7 +204,7 @@ export class EmployeesComponent implements OnInit, OnDestroy {
 
   onRoleChange(): void {
     if (!this.needsCredentials) {
-      this.fUsername = ''; this.fPassword = '';
+      this.fUsername   = ''; this.fPassword   = '';
       this.errUsername = false; this.errPassword = false;
     }
   }
@@ -226,7 +227,7 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     if (this.fSalary === null || this.fSalary < 0)
                              { this.errSalary  = true; ok = false; }
 
-    // Credentials only required on ADD for eligible roles
+    // Credentials required on ADD for Manager / Waiter
     if (this.needsCredentials && !this.isEditing) {
       if (!this.fUsername.trim()) { this.errUsername = true; ok = false; }
       if (!this.fPassword.trim()) { this.errPassword = true; ok = false; }
@@ -237,22 +238,24 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     this.isSaving = true;
 
     const payload: Omit<Employee, 'id'> = {
-      name:    this.fName.trim(),
-      phone:   this.fPhone.trim(),
-      email:   this.fEmail.trim(),
-      joining: this.fJoining,
-      role:    this.fRole,
-      dept:    '',
-      salary:  this.fSalary!,
-      month:   new Date().toISOString().slice(0, 7),
-      ...(this.needsCredentials && {
-        username: this.fUsername.trim() || undefined,
-        password: this.fPassword.trim() || undefined,
-      })
+      name:     this.fName.trim(),
+      phone:    this.fPhone.trim(),
+      email:    this.fEmail.trim(),
+      joining:  this.fJoining,
+      role:     this.fRole,
+      dept:     '',
+      salary:   this.fSalary!,
+      month:    new Date().toISOString().slice(0, 7),
+      username: this.needsCredentials
+                  ? (this.fUsername.trim() || undefined)
+                  : undefined,
+      password: this.needsCredentials
+                  ? (this.fPassword.trim() || undefined)
+                  : undefined,
     };
 
     if (this.isEditing && this.editingId !== null) {
-      // ── UPDATE ──
+      // ── UPDATE — employee server only ──
       const sub = this.employeesService
         .update(this.editingId, payload)
         .subscribe({
@@ -273,16 +276,50 @@ export class EmployeesComponent implements OnInit, OnDestroy {
 
     } else {
       // ── CREATE ──
+      // Manager/Waiter → registers on 192.168.1.39:3000 THEN inserts on 192.168.1.21:8080
+      // Others         → inserts directly on 192.168.1.21:8080
       const sub = this.employeesService.create(payload).subscribe({
         next: created => {
           this.employees.push(created);
           this.applyFilters();
-          this.showToast(`"${created.name}" added successfully!`, 'success');
+
+          const credMsg = this.needsCredentials
+            ? ` Login credentials created for ${created.role}.`
+            : '';
+
+          this.showToast(
+            `"${created.name}" added successfully!${credMsg}`,
+            'success'
+          );
           this.isSaving = false;
           this.closeModal();
         },
-        error: () => {
-          this.showToast('Failed to add employee.', 'danger');
+        error: (err) => {
+          console.error('Save employee failed — status:', err.status);
+          console.error('Save employee failed — body:',   err.error);
+
+          if (err.status === 409) {
+            this.showToast(
+              'Username already exists. Please choose a different username.',
+              'danger'
+            );
+            this.errUsername = true;
+          } else if (err.status === 400) {
+            this.showToast(
+              'Invalid data. Please check all fields and try again.',
+              'danger'
+            );
+          } else if (err.status === 0) {
+            this.showToast(
+              'Cannot reach server. Please check your network.',
+              'danger'
+            );
+          } else {
+            this.showToast(
+              err.error?.message || 'Failed to add employee. Please try again.',
+              'danger'
+            );
+          }
           this.isSaving = false;
         }
       });
@@ -329,7 +366,7 @@ export class EmployeesComponent implements OnInit, OnDestroy {
         this.showToast(`"${empName}" deleted.`, 'danger');
       },
       error: (err) => {
-        console.error('Delete failed:', err.status, err.message, err.error);
+        console.error('Delete failed:', err.status, err.error);
         this.showToast('Failed to delete employee.', 'danger');
         this.isDeleting = false;
       }
@@ -345,20 +382,59 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     const emp = this.employees.find(e => e.id === id);
     if (!emp) return;
 
-    this.salaryEmpId    = emp.id;
-    this.salaryEmpName  = emp.name;
-    this.salaryEmpRole  = emp.role;
-    this.salaryAmount   = emp.salary;
-    this.salaryPaidOn   = new Date().toISOString().split('T')[0];
-    this.salaryPayMode  = '';
-    this.isSavingSalary = false;
+    this.salaryEmpId      = emp.id;
+    this.salaryEmpName    = emp.name;
+    this.salaryEmpRole    = emp.role;
+    this.salaryAmount     = emp.salary;
+    this.salaryPaidOn     = new Date().toISOString().split('T')[0];
+    this.salaryPayMode    = '';
+    this.isSavingSalary   = false;
+    this.salaryAlreadyPaid = false;
+    this.salaryPaidRecord  = null;
     this.clearSalaryErrors();
-    this.showSalaryModal = true;
+    this.showSalaryModal  = true;
+
+    // Check if salary already paid this month
+    this.checkSalaryAlreadyPaid(emp.id);
+  }
+
+  private checkSalaryAlreadyPaid(employeeId: number): void {
+    this.isCheckingSalary = true;
+    const now   = new Date();
+    const month = now.getMonth();   // 0-indexed
+    const year  = now.getFullYear();
+
+    const sub = this.employeesService.getSalariesByEmployee(employeeId).subscribe({
+      next: (records) => {
+        this.isCheckingSalary = false;
+
+        // Find any record where paymentDate falls in current month + year
+        const duplicate = records.find(r => {
+          if (!r.paymentDate) return false;
+          const d = new Date(r.paymentDate + 'T00:00:00');
+          return d.getMonth() === month && d.getFullYear() === year;
+        });
+
+        if (duplicate) {
+          this.salaryAlreadyPaid = true;
+          this.salaryPaidRecord  = duplicate;
+        }
+      },
+      error: (err) => {
+        // If check fails, allow payment to proceed (fail open)
+        console.warn('[Salary] Could not verify payment history:', err);
+        this.isCheckingSalary = false;
+      }
+    });
+    this.subs.push(sub);
   }
 
   closeSalaryModal(): void {
-    this.showSalaryModal = false;
-    this.salaryEmpId     = null;
+    this.showSalaryModal   = false;
+    this.salaryEmpId       = null;
+    this.salaryAlreadyPaid = false;
+    this.salaryPaidRecord  = null;
+    this.isCheckingSalary  = false;
     this.clearSalaryErrors();
   }
 
@@ -368,8 +444,16 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     this.errSalaryPayMode = false;
   }
 
-  // ── Confirm payment ──
   saveSalary(): void {
+    // Block if already paid this month
+    if (this.salaryAlreadyPaid) {
+      this.showToast(
+        `Salary already paid for ${this.currentMonthLabel()} to "${this.salaryEmpName}".`,
+        'danger'
+      );
+      return;
+    }
+
     this.clearSalaryErrors();
     let ok = true;
 
@@ -393,7 +477,6 @@ export class EmployeesComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (record) => {
-          console.log('Salary saved:', record);
           const idx = this.employees.findIndex(e => e.id === this.salaryEmpId);
           if (idx > -1) {
             this.employees[idx] = {
@@ -406,19 +489,21 @@ export class EmployeesComponent implements OnInit, OnDestroy {
             `₹${this.salaryAmount!.toLocaleString('en-IN')} paid to "${this.salaryEmpName}"!`,
             'success'
           );
-          this.isSavingSalary  = false;
+          this.isSavingSalary = false;
           this.closeSalaryModal();
         },
         error: (err) => {
-          console.error('Salary insert failed — status:', err.status);
-          console.error('Salary insert failed — error body:', err.error);
-          console.error('Salary insert failed — full error:', err);
-          this.showToast('Failed to record salary payment. Check console for details.', 'danger');
+          console.error('Salary insert failed:', err.status, err.error);
+          this.showToast('Failed to record salary payment. Please try again.', 'danger');
           this.isSavingSalary = false;
         }
       });
-
     this.subs.push(sub);
+  }
+
+  // Helper — "March 2026" etc.
+  currentMonthLabel(): string {
+    return new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
   }
 
   // ════════════════════════════════════════
@@ -430,6 +515,7 @@ export class EmployeesComponent implements OnInit, OnDestroy {
   }
 
   fmtDate(iso: string): string {
+    if (!iso) return '—';
     return new Date(iso + 'T00:00:00').toLocaleDateString('en-IN', {
       day: '2-digit', month: 'short', year: 'numeric'
     });
@@ -440,6 +526,6 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     this.toastType    = type;
     this.toastVisible = true;
     clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.toastVisible = false, 2800);
+    this.toastTimer   = setTimeout(() => this.toastVisible = false, 2800);
   }
 }

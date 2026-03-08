@@ -1,9 +1,11 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { BillService, MenuItemOption, VoucherData } from '../services/bill.service';
-import { Subscription } from 'rxjs';
+import { BillService, MenuItemOption, VoucherOption, BillPayload } from '../services/bill.service';
+import { AuthService } from '../services/auth.service';
+import { Subscription, forkJoin } from 'rxjs';
 
 export interface BillItem {
   id:              number;
+  menuItemId:      number;
   name:            string;
   qty:             number;
   price:           number;
@@ -11,13 +13,6 @@ export interface BillItem {
   searchText:      string;
   dropdownOpen:    boolean;
   dropdownResults: MenuItemOption[];
-  highlightIdx:    number;
-}
-
-export interface Voucher {
-  type:  'percent' | 'flat';
-  value: number;
-  label: string;
 }
 
 @Component({
@@ -27,130 +22,274 @@ export interface Voucher {
 })
 export class GenerateBillComponent implements OnInit, OnDestroy {
 
-  // ── Loaded from JSON ──
-  MENU:     MenuItemOption[]            = [];
-  VOUCHERS: { [code: string]: Voucher } = {};
+  // ── Restaurant info ──
+  restaurantName:    string = 'FinanceTracker Restaurant';
+  restaurantAddress: string = '';
+  restaurantGst:     string = '';
+
+  // ── Menu + Vouchers ──
+  MENU:        MenuItemOption[] = [];
+  voucherList: VoucherOption[]  = [];
 
   // ── Loading states ──
-  isLoadingMenu:     boolean = false;
-  isLoadingVouchers: boolean = false;
-  menuError:         string  = '';
+  isLoadingMenu: boolean = false;
+  isSavingBill:  boolean = false;
+  menuError:     string  = '';
 
-  // ── Bill form fields ──
-  billNumber:    string = 'BL-2026-001';
+  // ── Bill flow ──
+  isBillGenerated: boolean       = false;
+  savedBillId:     number | null = null;
+
+  // ── Customer info ──
   customerType:  string = 'dine-in';
-  tableNumber:   string = '';
-  customerName:  string = '';
   customerPhone: string = '';
-  customerEmail: string = '';
+
+  // ── Payment ──
   paymentMethod: string = 'CASH';
-  notes:         string = '';
-  taxPct:        number = 10;
-  discount:      number = 0;
 
-  // ── Voucher ──
-  voucherCode:       string                              = '';
-  appliedVoucher:    (Voucher & { code: string }) | null = null;
-  voucherStatus:     string                              = '';
-  voucherStatusType: string                              = '';
+  // ── Billing ──
+  taxPct:   number = 10;
+  discount: number = 0;
 
-  // ── Bill items ──
+  // ── Voucher dropdown ──
+  selectedVoucherId: number          = 0;   // 0 = no voucher
+  appliedVoucher:    VoucherOption | null = null;
+  voucherStatus:     string          = '';
+  voucherStatusType: string          = '';
+  voucherDropdownOpen: boolean       = false;
+
+  // ── Items ──
   items:          BillItem[] = [];
   private nextId: number     = 1;
 
-  // ── Computed totals ──
+  // ── Totals ──
   subtotal:   number = 0;
   taxAmt:     number = 0;
   voucherAmt: number = 0;
   total:      number = 0;
 
-  // ── Print modal ──
+  // ── UI ──
   showPrintConfirm: boolean = false;
 
-  readonly CAT_LABELS: any = {
+  // ── Toast ──
+  toastMsg:     string  = '';
+  toastType:    string  = '';
+  toastVisible: boolean = false;
+  private toastTimer: any;
+
+  readonly CAT_LABELS: { [key: string]: string } = {
     'dine-in':  'Dine-In',
     'walk-in':  'Walk-In',
     'takeaway': 'Takeaway'
   };
 
-  readonly CAT_BADGE_CLASS: any = {
-    'dine-in':  'badge-dine-in',
-    'walk-in':  'badge-walk-in',
-    'takeaway': 'badge-takeaway'
-  };
-
   private subs: Subscription[] = [];
 
-  constructor(private billService: BillService) {}
+  constructor(
+    private billService: BillService,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
-    this.loadMenu();
-    this.loadVouchers();
+    this.loadInitialData();
   }
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
+    clearTimeout(this.toastTimer);
   }
 
-  // ── Current user (replace with AuthService later) ──
-  private readonly CURRENT_USER_ID: number = 1;
-
   // ════════════════════════════════════════
-  // LOAD MENU — filtered by userId
+  // LOAD — menu + vouchers + restaurant
   // ════════════════════════════════════════
 
-  loadMenu(): void {
+  loadInitialData(): void {
     this.isLoadingMenu = true;
     this.menuError     = '';
 
-    const sub = this.billService
-      .getMenuItemsByUserId(this.CURRENT_USER_ID)   // ← changed
-      .subscribe({
-        next: items => {
-          this.MENU          = items;
-          this.isLoadingMenu = false;
-          // Pre-load 3 sample items after menu is ready
-          this.addItemWithData({ name: 'Biryani',    price: 350, qty: 2 });
-          this.addItemWithData({ name: 'Naan',       price: 40,  qty: 1 });
-          this.addItemWithData({ name: 'Cold Drink', price: 50,  qty: 2 });
-          this.recalcTotals();
-        },
-        error: () => {
-          this.menuError     = 'Failed to load menu. Please refresh.';
-          this.isLoadingMenu = false;
-        }
-      });
+    const sub = forkJoin({
+      menu:       this.billService.getMenuItems(),
+      vouchers:   this.billService.getVouchers(),
+      restaurant: this.billService.getRestaurant(),
+    }).subscribe({
+      next: ({ menu, vouchers, restaurant }) => {
+        this.MENU        = menu;
+        this.voucherList = vouchers;
 
+        if (restaurant && restaurant.length > 0) {
+          const r = restaurant[0];
+          this.restaurantName    = r.restaurantName || 'FinanceTracker Restaurant';
+          this.restaurantAddress = r.address        || '';
+          this.restaurantGst     = r.gstNumber      || '';
+        }
+
+        this.isLoadingMenu = false;
+      },
+      error: () => {
+        this.menuError     = 'Failed to load data. Please retry.';
+        this.isLoadingMenu = false;
+      }
+    });
+    this.subs.push(sub);
+  }
+
+  loadMenu(): void {
+    this.loadInitialData();
+  }
+
+  // ════════════════════════════════════════
+  // VOUCHER DROPDOWN
+  // ════════════════════════════════════════
+
+  get activeVouchers(): VoucherOption[] {
+    // Loose check: API may return status as number 1, string "1", or boolean true
+    return this.voucherList.filter(v => Number(v.status) === 1);
+  }
+
+  selectVoucher(v: VoucherOption | null): void {
+    this.voucherDropdownOpen = false;
+
+    if (!v) {
+      // "No Voucher" selected
+      this.appliedVoucher    = null;
+      this.selectedVoucherId = 0;
+      this.voucherStatus     = '';
+      this.voucherStatusType = '';
+      this.recalcTotals();
+      return;
+    }
+
+    // Minimum amount check (client-side UX hint)
+    if (this.subtotal > 0 && v.minAmount > 0 && this.subtotal < v.minAmount) {
+      this.showToast(
+        `Minimum order ₹${v.minAmount} required for voucher "${v.code}".`,
+        'danger'
+      );
+      this.appliedVoucher    = null;
+      this.selectedVoucherId = 0;
+      this.voucherStatus     = `✕ Min. order ₹${v.minAmount} required`;
+      this.voucherStatusType = 'error';
+      this.recalcTotals();
+      return;
+    }
+
+    this.appliedVoucher    = v;
+    this.selectedVoucherId = v.id;
+    this.voucherStatus     = `✓ Applied: ${v.code} — ${v.percentage}% off`;
+    this.voucherStatusType = 'success';
+    this.recalcTotals();
+  }
+
+  removeVoucher(): void {
+    this.selectVoucher(null);
+  }
+
+  toggleVoucherDropdown(): void {
+    this.voucherDropdownOpen = !this.voucherDropdownOpen;
+  }
+
+  closeVoucherDropdown(): void {
+    setTimeout(() => { this.voucherDropdownOpen = false; }, 180);
+  }
+
+  // ════════════════════════════════════════
+  // STEP 1 — GENERATE BILL
+  // ════════════════════════════════════════
+
+  generateBill(): void {
+    this.isBillGenerated = true;
+    if (this.items.length === 0) {
+      this.addItem();
+    }
+  }
+
+  // ════════════════════════════════════════
+  // STEP 2 — SAVE BILL
+  // ════════════════════════════════════════
+
+  saveBill(): void {
+    const filled = this.filledItems;
+
+    if (!this.isBillGenerated) {
+      this.showToast('Please generate the bill first.', 'danger');
+      return;
+    }
+    if (filled.length === 0) {
+      this.showToast('Please add at least one item before saving.', 'danger');
+      return;
+    }
+    const invalid = filled.find(i => !i.menuItemId || i.menuItemId === 0);
+    if (invalid) {
+      this.showToast('Please select items from the dropdown.', 'danger');
+      return;
+    }
+
+    this.isSavingBill = true;
+
+    const voucherId = this.appliedVoucher?.id ?? 0;
+
+    const payload: BillPayload = {
+      paymentMode:  this.paymentMethod || 'CASH',
+      customerType: this.customerType,
+      phoneNo:      this.customerPhone.trim(),
+    };
+
+    console.log('[Bill] POST — voucherId:', voucherId, '— payload:', payload);
+
+    const sub = this.billService.createBill(payload, voucherId).subscribe({
+      next: (billRes) => {
+        console.log('[Bill] created:', billRes);
+
+        const billId = billRes.billId
+                    ?? billRes.id
+                    ?? billRes.bill_id
+                    ?? billRes.billID;
+
+        if (!billId) {
+          this.showToast('Bill saved but no billId returned.', 'danger');
+          this.isSavingBill = false;
+          return;
+        }
+
+        this.savedBillId = billId;
+        this.saveItemsSequentially(billId, filled, 0);
+      },
+      error: (err) => {
+        console.error('[Bill] create failed:', err);
+        this.showToast(
+          err.error?.message || 'Failed to save bill. Please try again.',
+          'danger'
+        );
+        this.isSavingBill = false;
+      }
+    });
     this.subs.push(sub);
   }
 
   // ════════════════════════════════════════
-  // LOAD VOUCHERS — filtered by userId
+  // SAVE ITEMS SEQUENTIALLY
   // ════════════════════════════════════════
 
-  loadVouchers(): void {
-    this.isLoadingVouchers = true;
+  private saveItemsSequentially(billId: number, items: BillItem[], index: number): void {
+    if (index >= items.length) {
+      this.isSavingBill = false;
+      this.showToast(
+        `Bill saved! ${items.length} item(s) added. Total: ${this.inr(this.total)}`,
+        'success'
+      );
+      return;
+    }
 
+    const item = items[index];
     const sub = this.billService
-      .getVouchersByUserId(this.CURRENT_USER_ID)    // ← changed
+      .addBillItem(billId, item.menuItemId, item.qty)
       .subscribe({
-        next: list => {
-          const map: { [code: string]: Voucher } = {};
-          list.forEach(v => {
-            map[v.code] = {
-              type:  v.type,
-              value: v.value,
-              label: v.label
-            };
-          });
-          this.VOUCHERS          = map;
-          this.isLoadingVouchers = false;
-        },
-        error: () => {
-          this.isLoadingVouchers = false;
+        next:  () => this.saveItemsSequentially(billId, items, index + 1),
+        error: (err) => {
+          console.error(`[Bill-Item] failed for "${item.name}":`, err);
+          this.saveItemsSequentially(billId, items, index + 1);
         }
       });
-
     this.subs.push(sub);
   }
 
@@ -160,54 +299,6 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
 
   setCustomerType(type: string): void {
     this.customerType = type;
-    if (type !== 'dine-in') this.tableNumber = '';
-    this.recalcTotals();
-  }
-
-  // ════════════════════════════════════════
-  // VOUCHER
-  // ════════════════════════════════════════
-
-  applyVoucher(): void {
-    const code = this.voucherCode.trim().toUpperCase();
-
-    if (!code) {
-      this.voucherStatus     = '⚠ Please enter a voucher code.';
-      this.voucherStatusType = 'error';
-      return;
-    }
-
-    if (this.isLoadingVouchers || Object.keys(this.VOUCHERS).length === 0) {
-      this.voucherStatus     = '⚠ Vouchers are still loading, please try again.';
-      this.voucherStatusType = 'error';
-      return;
-    }
-
-    const found = this.VOUCHERS[code];
-
-    if (found) {
-      this.appliedVoucher = {
-        code:  code,
-        type:  found.type,
-        value: found.value,
-        label: found.label
-      };
-      this.voucherStatus     = `✓ Voucher applied: ${found.label}`;
-      this.voucherStatusType = 'success';
-    } else {
-      this.appliedVoucher    = null;
-      this.voucherStatus     = '✕ Invalid code. Try: SAVE10, FLAT50, WELCOME20, VIP15, SPECIAL100';
-      this.voucherStatusType = 'error';
-    }
-
-    this.recalcTotals();
-  }
-
-  removeVoucher(): void {
-    this.appliedVoucher    = null;
-    this.voucherCode       = '';
-    this.voucherStatus     = '';
-    this.voucherStatusType = '';
     this.recalcTotals();
   }
 
@@ -218,6 +309,7 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
   addItem(): void {
     this.items.push({
       id:              this.nextId++,
+      menuItemId:      0,
       name:            '',
       qty:             1,
       price:           0,
@@ -225,78 +317,40 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
       searchText:      '',
       dropdownOpen:    false,
       dropdownResults: [],
-      highlightIdx:    -1
-    });
-  }
-
-  addItemWithData(data: { name: string; price: number; qty: number }): void {
-    this.items.push({
-      id:              this.nextId++,
-      name:            data.name,
-      qty:             data.qty,
-      price:           data.price,
-      total:           data.price * data.qty,
-      searchText:      data.name,
-      dropdownOpen:    false,
-      dropdownResults: [],
-      highlightIdx:    -1
     });
   }
 
   removeItem(id: number): void {
-    this.items = this.items.filter(i => i.id !== id);
+    this.items = this.items.filter((i: BillItem) => i.id !== id);
     this.recalcTotals();
   }
-
-  // ════════════════════════════════════════
-  // SEARCH DROPDOWN
-  // ════════════════════════════════════════
 
   onSearchInput(item: BillItem): void {
     const q = item.searchText.toLowerCase().trim();
     item.dropdownResults = q === ''
-      ? this.MENU.slice(0, 10)
-      : this.MENU.filter(m => m.name.toLowerCase().includes(q));
+      ? this.MENU.slice(0, 8)
+      : this.MENU.filter((m: MenuItemOption) => m.name.toLowerCase().includes(q));
     item.dropdownOpen = true;
-    item.highlightIdx = -1;
+    item.menuItemId   = 0;
+    item.price        = 0;
+    item.total        = 0;
+    this.recalcTotals();
   }
 
   onSearchFocus(item: BillItem): void {
-    const q = item.searchText.toLowerCase().trim();
-    item.dropdownResults = q === ''
-      ? this.MENU.slice(0, 10)
-      : this.MENU.filter(m => m.name.toLowerCase().includes(q));
-    item.dropdownOpen = true;
+    this.onSearchInput(item);
   }
 
   onSearchBlur(item: BillItem): void {
-    setTimeout(() => { item.dropdownOpen = false; }, 180);
-  }
-
-  onSearchKeydown(event: KeyboardEvent, item: BillItem): void {
-    const len = item.dropdownResults.length;
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      item.highlightIdx = Math.min(item.highlightIdx + 1, len - 1);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      item.highlightIdx = Math.max(item.highlightIdx - 1, 0);
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      if (item.highlightIdx >= 0 && item.dropdownResults[item.highlightIdx]) {
-        this.selectMenuItem(item, item.dropdownResults[item.highlightIdx]);
-      }
-    } else if (event.key === 'Escape') {
-      item.dropdownOpen = false;
-    }
+    setTimeout(() => { item.dropdownOpen = false; }, 200);
   }
 
   selectMenuItem(item: BillItem, menu: MenuItemOption): void {
+    item.menuItemId   = menu.id;
     item.name         = menu.name;
     item.searchText   = menu.name;
     item.price        = menu.price;
     item.dropdownOpen = false;
-    item.highlightIdx = -1;
     this.updateItemTotal(item);
   }
 
@@ -305,24 +359,14 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
     this.recalcTotals();
   }
 
-  // ════════════════════════════════════════
-  // TOTALS
-  // ════════════════════════════════════════
-
   recalcTotals(): void {
     this.subtotal = this.items.reduce((s, i) => s + (i.total || 0), 0);
     this.taxAmt   = (this.subtotal * (this.taxPct || 0)) / 100;
 
     this.voucherAmt = 0;
     if (this.appliedVoucher) {
-      const v = this.appliedVoucher;
-      this.voucherAmt = v.type === 'percent'
-        ? ((this.subtotal + this.taxAmt) * v.value) / 100
-        : v.value;
-      this.voucherAmt = Math.min(
-        this.voucherAmt,
-        this.subtotal + this.taxAmt - (this.discount || 0)
-      );
+      // Percentage-based voucher from backend
+      this.voucherAmt = ((this.subtotal + this.taxAmt) * this.appliedVoucher.percentage) / 100;
     }
 
     this.total = Math.max(
@@ -332,53 +376,116 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════
-  // HELPERS
-  // ════════════════════════════════════════
-
-  inr(n: number): string { return `₹${n.toFixed(2)}`; }
-
-  get previewCustomerName(): string {
-    return this.customerName.trim() || 'Walk-in Customer';
-  }
-
-  get previewDate(): string {
-    return new Date().toLocaleDateString('en-IN', {
-      day: '2-digit', month: '2-digit', year: 'numeric'
-    });
-  }
-
-  get previewTime(): string {
-    return new Date().toLocaleTimeString('en-IN', {
-      hour: '2-digit', minute: '2-digit', hour12: true
-    });
-  }
-
-  get filledItems(): BillItem[] {
-    return this.items.filter(i => i.name.trim());
-  }
-
-  // ════════════════════════════════════════
   // PRINT
   // ════════════════════════════════════════
 
-  openPrintConfirm(): void  { this.showPrintConfirm = true; }
+  openPrintConfirm(): void  { this.showPrintConfirm = true;  }
   closePrintConfirm(): void { this.showPrintConfirm = false; }
-
   doPrint(): void {
     this.showPrintConfirm = false;
-    setTimeout(() => window.print(), 300);
+    setTimeout(() => this.printBillOnly(), 300);
+  }
+
+  private printBillOnly(): void {
+    const el = document.getElementById('billPreview');
+    if (!el) { window.print(); return; }
+
+    const printWin = window.open('', '_blank', 'width=800,height=600');
+    if (!printWin) { window.print(); return; }
+
+    printWin.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Bill — ${this.restaurantName}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      background: white;
+      color: #111;
+      padding: 24px;
+    }
+    .bill-header { text-align: center; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid #ddd; }
+    .bill-restaurant-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .bill-address, .bill-gst { font-size: 11px; color: #555; }
+    .bill-meta {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-bottom: 14px;
+      padding-bottom: 14px; border-bottom: 1px solid #ddd;
+      font-size: 11px;
+    }
+    .bill-meta-item { display: flex; flex-direction: column; }
+    .bill-meta-label { font-weight: 600; color: #777; font-size: 10px; text-transform: uppercase; }
+    .bill-item-header {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 6px; font-weight: 700; font-size: 11px;
+      border-bottom: 2px solid #111;
+      padding-bottom: 6px; margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .bill-item {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 6px; padding: 5px 0;
+      border-bottom: 1px solid #eee; font-size: 12px;
+    }
+    .bill-totals { margin-top: 14px; padding-top: 10px; border-top: 2px solid #111; }
+    .bill-total-row {
+      display: flex; justify-content: space-between;
+      padding: 4px 0; font-size: 12px;
+    }
+    .bill-total-row.final {
+      font-size: 15px; font-weight: 700;
+      border-top: 1px solid #ddd;
+      margin-top: 8px; padding-top: 8px;
+    }
+    .bill-footer {
+      text-align: center; margin-top: 18px;
+      padding-top: 14px; border-top: 1px dashed #ddd;
+      font-size: 11px; color: #777;
+    }
+    @page { margin: 10mm; size: A4 portrait; }
+  </style>
+</head>
+<body>
+  ${el.innerHTML}
+</body>
+</html>`);
+
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => {
+      printWin.print();
+      printWin.close();
+    }, 400);
   }
 
   // ════════════════════════════════════════
-  // SAVE
+  // HELPERS
   // ════════════════════════════════════════
 
-  saveBill(): void {
-    alert(
-      `Bill saved successfully!\n` +
-      `Bill No: ${this.billNumber}\n` +
-      `Type: ${this.CAT_LABELS[this.customerType]}\n` +
-      `Total: ${this.inr(this.total)}`
-    );
+  inr(n: number): string {
+    return `₹${(n || 0).toFixed(2)}`;
+  }
+
+  get previewDate(): string {
+    return new Date().toLocaleDateString('en-IN');
+  }
+
+  get filledItems(): BillItem[] {
+    return this.items.filter((i: BillItem) => i.name.trim() !== '' && i.price > 0);
+  }
+
+  // ════════════════════════════════════════
+  // TOAST
+  // ════════════════════════════════════════
+
+  showToast(msg: string, type: string = 'info'): void {
+    this.toastMsg     = msg;
+    this.toastType    = type;
+    this.toastVisible = true;
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => { this.toastVisible = false; }, 3000);
   }
 }

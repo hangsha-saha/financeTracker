@@ -436,3 +436,48 @@ tbody tr:last-child td { border-bottom: none; }
   animation: spin 0.7s linear infinite;
   flex-shrink: 0;
 }
+/* ── Salary check loading ── */
+.salary-check-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  justify-content: center;
+}
+
+.spinner-sm {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Already paid banner ── */
+.salary-already-paid {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: #fff8e1;
+  border: 1.5px solid #f59e0b;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 8px;
+}
+
+.sap-icon { font-size: 28px; line-height: 1; }
+
+.sap-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #92400e;
+  margin-bottom: 4px;
+}
+
+.sap-detail {
+  font-size: 13px;
+  color: #78350f;
+  line-height: 1.5;
+}

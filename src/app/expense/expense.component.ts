@@ -1,96 +1,122 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { AuthService } from '../services/auth.service';
 
-// ── Matches your DB EXPENSE table exactly ──
+// ─────────────────────────────────────────────
+//  Internal model used everywhere in the view
+// ─────────────────────────────────────────────
 export interface Expense {
-  expenseId:   number;    // expense_id
-  expenseName: string;    // expense_name
-  expenseType: string;    // expense_type  ← your "category"
-  amount:      number;    // amount
-  expenseDate: string;    // expense_date  "YYYY-MM-DD"
-  description: string;    // description
+  id:           number;
+  date:         string;   // stored as "YYYY-MM-DD" internally
+  name:         string;
+  category:     string;
+  amount:       number;
+  description?: string;
 }
 
-export interface ExpensePayload {
+// ─────────────────────────────────────────────
+//  Shape the REST API sends / receives
+// ─────────────────────────────────────────────
+interface ApiExpense {
+  expenseId:   number;
   expenseName: string;
   expenseType: string;
   amount:      number;
-  expenseDate: string;
+  expenseDate: string;   // "DD-MM-YYYY"
   description: string;
 }
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data:    T;
-  message?: string;
+interface ApiExpensePayload {
+  expenseName: string;
+  expenseType: string;
+  amount:      number;
+  expenseDate: string;   // "DD-MM-YYYY"
+  description: string;
 }
 
 @Component({
-  selector: 'app-expense',
+  selector:    'app-expense',
   templateUrl: './expense.component.html',
-  styleUrls: ['./expense.component.css']
+  styleUrls:   ['./expense.component.css']
 })
-export class ExpenseComponent implements OnInit, OnDestroy {
+export class ExpenseComponent implements OnInit {
 
-  private readonly BASE = 'http://localhost:8080/api/expenses';
+  // ── API endpoints ──────────────────────────────────────────────────────────
+  private get USER_ID(): number {
+    return this.authService.getCurrentUserId();
+  }
+  private readonly BASE_URL = 'http://192.168.1.39:3000/expenses';
 
-  // ── Data ──
+  private get FETCH_URL()         { return `${this.BASE_URL}/user/${this.USER_ID}`; }  // GET  all
+  private get CREATE_URL()        { return `${this.BASE_URL}/${this.USER_ID}`;      }  // POST new
+  private editUrl(id: number)     { return `${this.BASE_URL}/${id}`;               }  // PUT
+  private deleteUrl(id: number)   { return `${this.BASE_URL}/${id}`;               }  // DELETE
+
+  private readonly JSON_HEADERS = new HttpHeaders({ 'Content-Type': 'application/json' });
+
+  // ── Page state ─────────────────────────────────────────────────────────────
+  isLoading:  boolean = false;
+  loadError:  string  = '';
+  isSaving:   boolean = false;
+  isDeleting: boolean = false;
+
+  // ── Sidebar ────────────────────────────────────────────────────────────────
+  sidebarName:    string = 'Admin User';
+  sidebarRole:    string = 'Admin';
+  sidebarInitial: string = 'A';
+  sidebarEmail:   string = 'admin@restaurant.com';
+
+  // ── Data ───────────────────────────────────────────────────────────────────
   expenses: Expense[] = [];
-  filtered: Expense[] = [];
 
-  // ── Loading / error ──
-  isLoading: boolean = false;
-  apiError:  string  = '';
+  // ── Filters ────────────────────────────────────────────────────────────────
+  categoryFilter: string    = '';
+  searchInput:    string    = '';
+  filtered:       Expense[] = [];
 
-  // ── Filter ──
-  categoryFilter: string = '';
-  searchInput:    string = '';
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  page:                number = 1;
+  readonly ROWS_PER_PAGE      = 10;
 
-  // ── Pagination ──
-  page: number           = 1;
-  readonly ROWS_PER_PAGE = 10;
-
-  // ── Summary ──
+  // ── Summary ────────────────────────────────────────────────────────────────
   monthlyTotal: number = 0;
 
-  // ── Modal ──
-  showModal:  boolean       = false;
-  isEditing:  boolean       = false;
-  editingId:  number | null = null;
-  modalTitle: string        = 'Add New Expense';
-  isSaving:   boolean       = false;
+  // ── Add / Edit Modal ───────────────────────────────────────────────────────
+  showModal:   boolean       = false;
+  isEditing:   boolean       = false;
+  editingId:   number | null = null;
+  modalTitle:  string        = 'Add New Expense';
 
-  // Form fields
   fDate:        string        = '';
   fName:        string        = '';
   fCategory:    string        = '';
   fAmount:      number | null = null;
   fDescription: string        = '';
 
-  // Form errors
   errDate:     boolean = false;
   errName:     boolean = false;
   errCategory: boolean = false;
   errAmount:   boolean = false;
 
-  // ── Confirm delete ──
+  // ── Confirm Delete ─────────────────────────────────────────────────────────
   showConfirm:     boolean       = false;
   confirmMsg:      string        = '';
   pendingDeleteId: number | null = null;
-  isDeleting:      boolean       = false;
 
-  // ── Toast ──
+  // ── Toast ──────────────────────────────────────────────────────────────────
   toastMsg:     string  = '';
   toastType:    string  = '';
   toastVisible: boolean = false;
   private toastTimer: any;
 
+  // ── Static lookups ─────────────────────────────────────────────────────────
   readonly CATEGORIES = [
-    'Rent', 'Utilities', 'Raw Materials',
-    'Salaries', 'Marketing', 'Supplies', 'Maintenance'
+    'Rent', 'Utilities', 'Raw Materials', 'Salaries',
+    'Marketing', 'Supplies', 'Maintenance', 'Variable', 'Fixed', 'Other'
   ];
 
-  readonly BADGE_CLASS: any = {
+  readonly BADGE_CLASS: Record<string, string> = {
     'Rent':          'badge-rent',
     'Utilities':     'badge-utilities',
     'Raw Materials': 'badge-raw-materials',
@@ -98,140 +124,222 @@ export class ExpenseComponent implements OnInit, OnDestroy {
     'Marketing':     'badge-marketing',
     'Supplies':      'badge-supplies',
     'Maintenance':   'badge-maintenance',
+    'Variable':      'badge-raw-materials',
+    'Fixed':         'badge-salaries',
+    'Other':         'badge-rent',
   };
 
-  constructor(private http: HttpClient) {}
+  // ──────────────────────────────────────────────────────────────────────────
+  constructor(
+    private router:      Router,
+    private http:        HttpClient,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
+    this.loadSidebarProfile();
     this.fDate = this.todayString();
-    this.loadExpenses();
+    this.fetchExpenses();
   }
 
-  ngOnDestroy(): void {
-    clearTimeout(this.toastTimer);
-  }
-
-  // ════════════════════════════════════════
-  // API CALLS
-  // ════════════════════════════════════════
-
-  // GET all  →  SELECT * FROM EXPENSE
-  loadExpenses(): void {
+  // ══════════════════════════════════════════════════════════════════════════
+  //  GET — load all expenses
+  // ══════════════════════════════════════════════════════════════════════════
+  fetchExpenses(): void {
     this.isLoading = true;
-    this.apiError  = '';
+    this.loadError = '';
 
-    this.http.get<ApiResponse<Expense[]>>(this.BASE).subscribe({
-      next: res => {
-        this.expenses  = res.data;
+    this.http.get<ApiExpense[]>(this.FETCH_URL).subscribe({
+      next: (data) => {
+        this.expenses  = (data || []).map(item => this.mapApiExpense(item));
         this.isLoading = false;
         this.applyFilters();
       },
-      error: err => {
-        this.apiError  = err.error?.message || 'Failed to load expenses.';
+      error: (err) => {
+        console.error('[Expense] GET failed:', err);
+        this.loadError = 'Failed to load expenses. Check the server and try again.';
         this.isLoading = false;
+        this.applyFilters();
       }
     });
   }
 
-  // POST  →  INSERT INTO EXPENSE
-  private createExpense(payload: ExpensePayload): void {
+  retryFetch(): void { this.fetchExpenses(); }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  POST — create new expense
+  // ══════════════════════════════════════════════════════════════════════════
+  private createExpense(): void {
+    const payload: ApiExpensePayload = {
+      expenseName: this.fName.trim(),
+      expenseType: this.fCategory,
+      amount:      this.fAmount!,
+      expenseDate: this.toApiDate(this.fDate),
+      description: this.fDescription.trim()
+    };
+
     this.isSaving = true;
 
-    this.http.post<ApiResponse<Expense>>(this.BASE, payload).subscribe({
-      next: res => {
-        this.expenses.push(res.data);
-        this.applyFilters();
-        this.showToast(`"${res.data.expenseName}" added!`, 'success');
-        this.isSaving = false;
-        this.closeModal();
-      },
-      error: err => {
-        this.showToast(err.error?.message || 'Failed to add expense.', 'danger');
-        this.isSaving = false;
-      }
-    });
+    this.http.post<ApiExpense>(this.CREATE_URL, payload, { headers: this.JSON_HEADERS })
+      .subscribe({
+        next: (saved) => {
+          this.expenses = [...this.expenses, this.mapApiExpense(saved)];
+          this.isSaving = false;
+          this.showToast(`"${saved.expenseName}" added successfully`, 'success');
+          this.closeModal();
+          this.applyFilters();
+        },
+        error: (err) => {
+          console.error('[Expense] POST failed:', err);
+          this.isSaving = false;
+          this.showToast('Failed to add expense. Please try again.', 'danger');
+        }
+      });
   }
 
-  // PUT  →  UPDATE EXPENSE SET ... WHERE expense_id = :id
-  private updateExpense(id: number, payload: ExpensePayload): void {
+  // ══════════════════════════════════════════════════════════════════════════
+  //  PUT — update existing expense
+  // ══════════════════════════════════════════════════════════════════════════
+  private updateExpense(): void {
+    const payload: ApiExpensePayload = {
+      expenseName: this.fName.trim(),
+      expenseType: this.fCategory,
+      amount:      this.fAmount!,
+      expenseDate: this.toApiDate(this.fDate),
+      description: this.fDescription.trim()
+    };
+
     this.isSaving = true;
 
-    this.http.put<ApiResponse<Expense>>(`${this.BASE}/${id}`, payload).subscribe({
-      next: res => {
-        const idx = this.expenses.findIndex(e => e.expenseId === id);
-        if (idx > -1) this.expenses[idx] = res.data;
-        this.applyFilters();
-        this.showToast(`"${res.data.expenseName}" updated!`, 'success');
-        this.isSaving = false;
-        this.closeModal();
-      },
-      error: err => {
-        this.showToast(err.error?.message || 'Failed to update expense.', 'danger');
-        this.isSaving = false;
-      }
-    });
+    this.http.put<ApiExpense>(this.editUrl(this.editingId!), payload, { headers: this.JSON_HEADERS })
+      .subscribe({
+        next: (updated) => {
+          const idx = this.expenses.findIndex(e => e.id === this.editingId);
+          if (idx > -1) {
+            const list = [...this.expenses];
+            list[idx]  = this.mapApiExpense(updated);
+            this.expenses = list;
+          }
+          this.isSaving = false;
+          this.showToast(`"${updated.expenseName}" updated successfully`, 'success');
+          this.closeModal();
+          this.applyFilters();
+        },
+        error: (err) => {
+          console.error('[Expense] PUT failed:', err);
+          this.isSaving = false;
+          this.showToast('Failed to update expense. Please try again.', 'danger');
+        }
+      });
   }
 
-  // DELETE  →  DELETE FROM EXPENSE WHERE expense_id = :id
+  // ══════════════════════════════════════════════════════════════════════════
+  //  DELETE — remove expense
+  // ══════════════════════════════════════════════════════════════════════════
   doDelete(): void {
     if (this.pendingDeleteId === null) return;
-    this.isDeleting = true;
 
-    const expName = this.expenses.find(
-      e => e.expenseId === this.pendingDeleteId
-    )?.expenseName;
+    const idToDelete = this.pendingDeleteId;   // ← save it first
+    const expName    = this.expenses.find(e => e.id === idToDelete)?.name ?? '';
 
-    this.http.delete<ApiResponse<null>>(
-      `${this.BASE}/${this.pendingDeleteId}`
-    ).subscribe({
+    this.isDeleting  = true;
+    this.showConfirm = false;
+    this.pendingDeleteId = null;               // ← clear immediately
+
+    this.http.delete(this.deleteUrl(idToDelete), { responseType: 'text' }).subscribe({
       next: () => {
-        this.expenses = this.expenses.filter(
-          e => e.expenseId !== this.pendingDeleteId
-        );
+        this.expenses   = this.expenses.filter(e => e.id !== idToDelete);
+        this.isDeleting = false;
+        this.showToast(`"${expName}" deleted`, 'danger');
         this.applyFilters();
-        this.showToast(`"${expName}" deleted.`, 'danger');
-        this.pendingDeleteId = null;
-        this.showConfirm     = false;
-        this.isDeleting      = false;
       },
-      error: err => {
-        this.showToast(err.error?.message || 'Failed to delete.', 'danger');
-        this.isDeleting  = false;
-        this.showConfirm = false;
+      error: (err) => {
+        console.error('[Expense] DELETE failed:', err);
+        this.isDeleting = false;
+        this.showToast('Failed to delete expense. Please try again.', 'danger');
       }
     });
   }
 
-  // ════════════════════════════════════════
-  // HELPERS
-  // ════════════════════════════════════════
-
-  todayString(): string {
-    return new Date().toISOString().split('T')[0];
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Modal helpers
+  // ══════════════════════════════════════════════════════════════════════════
+  openAddModal(): void {
+    this.isEditing  = false;
+    this.editingId  = null;
+    this.modalTitle = 'Add New Expense';
+    this.clearForm();
+    this.fDate     = this.todayString();
+    this.showModal = true;
   }
 
-  inr(n: number): string {
-    return '₹' + n.toLocaleString('en-IN');
+  openEditModal(id: number): void {
+    const exp = this.expenses.find(e => e.id === id);
+    if (!exp) return;
+    this.isEditing    = true;
+    this.editingId    = id;
+    this.modalTitle   = 'Edit Expense';
+    this.fDate        = exp.date;
+    this.fName        = exp.name;
+    this.fCategory    = exp.category;
+    this.fAmount      = exp.amount;
+    this.fDescription = exp.description || '';
+    this.clearErrors();
+    this.showModal    = true;
   }
 
-  getBadgeClass(cat: string): string {
-    return this.BADGE_CLASS[cat] || 'badge-rent';
+  closeModal(): void {
+    if (this.isSaving) return;
+    this.showModal = false;
+    this.clearForm();
   }
 
-  // ════════════════════════════════════════
-  // FILTER + PAGINATION
-  // ════════════════════════════════════════
+  /** Validate → dispatch to createExpense() or updateExpense() */
+  saveExpense(): void {
+    this.clearErrors();
+    let valid = true;
 
+    if (!this.fDate)                                                          { this.errDate     = true; valid = false; }
+    if (!this.fName.trim())                                                   { this.errName     = true; valid = false; }
+    if (!this.fCategory)                                                      { this.errCategory = true; valid = false; }
+    if (this.fAmount === null || isNaN(+this.fAmount) || +this.fAmount < 0)  { this.errAmount   = true; valid = false; }
+
+    if (!valid) return;
+
+    this.isEditing && this.editingId !== null
+      ? this.updateExpense()
+      : this.createExpense();
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Delete confirmation dialog
+  // ══════════════════════════════════════════════════════════════════════════
+  confirmDelete(id: number): void {
+    const exp = this.expenses.find(e => e.id === id);
+    if (!exp) return;
+    this.pendingDeleteId = id;
+    this.confirmMsg      = `Delete "${exp.name}"? This cannot be undone.`;
+    this.showConfirm     = true;
+  }
+
+  cancelDelete(): void {
+    this.showConfirm     = false;
+    this.pendingDeleteId = null;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Filters & pagination
+  // ══════════════════════════════════════════════════════════════════════════
   applyFilters(): void {
     const cat    = this.categoryFilter.toLowerCase();
     const search = this.searchInput.toLowerCase().trim();
 
     this.filtered = this.expenses.filter(e => {
-      const matchCat    = !cat    || e.expenseType.toLowerCase() === cat;
+      const matchCat    = !cat    || e.category.toLowerCase() === cat;
       const matchSearch = !search ||
-        e.expenseName.toLowerCase().includes(search)  ||
-        e.expenseType.toLowerCase().includes(search)  ||
-        e.expenseDate.includes(search)                ||
+        e.name.toLowerCase().includes(search)     ||
+        e.category.toLowerCase().includes(search) ||
+        e.date.includes(search)                   ||
         e.amount.toString().includes(search);
       return matchCat && matchSearch;
     });
@@ -241,7 +349,7 @@ export class ExpenseComponent implements OnInit, OnDestroy {
   }
 
   updateMonthlyTotal(): void {
-    this.monthlyTotal = this.expenses.reduce((s, e) => s + e.amount, 0);
+    this.monthlyTotal = this.expenses.reduce((sum, e) => sum + e.amount, 0);
   }
 
   get pagedItems(): Expense[] {
@@ -256,38 +364,48 @@ export class ExpenseComponent implements OnInit, OnDestroy {
   prevPage(): void { if (this.page > 1) this.page--; }
   nextPage(): void { if (this.page < this.totalPages) this.page++; }
 
-  // ════════════════════════════════════════
-  // MODAL
-  // ════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Date conversion helpers
+  // ══════════════════════════════════════════════════════════════════════════
 
-  openAddModal(): void {
-    this.isEditing  = false;
-    this.editingId  = null;
-    this.modalTitle = 'Add New Expense';
-    this.clearForm();
-    this.fDate     = this.todayString();
-    this.showModal = true;
+  /** "DD-MM-YYYY" → "YYYY-MM-DD"  (API → HTML input) */
+  private convertDate(dateStr: string): string {
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+    const p = dateStr.split('-');
+    if (p.length === 3 && p[2].length === 4) return `${p[2]}-${p[1]}-${p[0]}`;
+    return dateStr;
   }
 
-  openEditModal(id: number): void {
-    const exp = this.expenses.find(e => e.expenseId === id);
-    if (!exp) return;
-    this.isEditing    = true;
-    this.editingId    = id;
-    this.modalTitle   = 'Edit Expense';
-    this.fDate        = exp.expenseDate;
-    this.fName        = exp.expenseName;
-    this.fCategory    = exp.expenseType;
-    this.fAmount      = exp.amount;
-    this.fDescription = exp.description || '';
-    this.clearErrors();
-    this.showModal    = true;
+  /** "YYYY-MM-DD" → "DD-MM-YYYY"  (HTML input → API payload) */
+  private toApiDate(dateStr: string): string {
+    if (!dateStr) return '';
+    if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
+    const p = dateStr.split('-');
+    if (p.length === 3 && p[0].length === 4) return `${p[2]}-${p[1]}-${p[0]}`;
+    return dateStr;
   }
 
-  closeModal(): void {
-    this.showModal = false;
-    this.clearForm();
+  /** Maps an API response object → internal Expense model */
+  private mapApiExpense(item: ApiExpense): Expense {
+    return {
+      id:          item.expenseId,
+      date:        this.convertDate(item.expenseDate),
+      name:        item.expenseName,
+      category:    item.expenseType,
+      amount:      item.amount,
+      description: item.description || ''
+    };
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Misc helpers
+  // ══════════════════════════════════════════════════════════════════════════
+  todayString(): string { return new Date().toISOString().split('T')[0]; }
+
+  inr(n: number): string { return '₹' + Number(n).toLocaleString('en-IN'); }
+
+  getBadgeClass(cat: string): string { return this.BADGE_CLASS[cat] ?? 'badge-rent'; }
 
   clearForm(): void {
     this.fDate = ''; this.fName = ''; this.fCategory = '';
@@ -296,69 +414,51 @@ export class ExpenseComponent implements OnInit, OnDestroy {
   }
 
   clearErrors(): void {
-    this.errDate = false; this.errName = false;
-    this.errCategory = false; this.errAmount = false;
+    this.errDate = this.errName = this.errCategory = this.errAmount = false;
   }
 
-  // ════════════════════════════════════════
-  // SAVE — dispatches to create or update
-  // ════════════════════════════════════════
-
-  saveExpense(): void {
-    this.clearErrors();
-    let ok = true;
-
-    if (!this.fDate)                                               { this.errDate     = true; ok = false; }
-    if (!this.fName.trim())                                        { this.errName     = true; ok = false; }
-    if (!this.fCategory)                                           { this.errCategory = true; ok = false; }
-    if (this.fAmount === null || isNaN(this.fAmount) || this.fAmount < 0) {
-      this.errAmount = true; ok = false;
-    }
-
-    if (!ok) return;
-
-    // ── Build payload matching ExpenseRequestDTO ──
-    const payload: ExpensePayload = {
-      expenseName: this.fName.trim(),
-      expenseType: this.fCategory,
-      amount:      this.fAmount!,
-      expenseDate: this.fDate,
-      description: this.fDescription.trim(),
-    };
-
-    if (this.isEditing && this.editingId !== null) {
-      this.updateExpense(this.editingId, payload);
-    } else {
-      this.createExpense(payload);
-    }
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Sidebar profile
+  // ══════════════════════════════════════════════════════════════════════════
+  loadSidebarProfile(): void {
+    try {
+      const raw = localStorage.getItem('ftProfile');
+      if (raw) {
+        const p = JSON.parse(raw);
+        const roleMap: Record<string,string> = {
+          admin: 'Admin', manager: 'Manager', cashier: 'Cashier', staff: 'Staff'
+        };
+        this.sidebarName    = p.displayName || `${p.firstName} ${p.lastName}`;
+        this.sidebarRole    = roleMap[p.role] ?? 'Admin';
+        this.sidebarInitial = (p.firstName || 'A')[0].toUpperCase();
+        this.sidebarEmail   = p.email || 'admin@restaurant.com';
+      }
+    } catch (_) {}
   }
 
-  // ════════════════════════════════════════
-  // DELETE
-  // ════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Navigation
+  // ══════════════════════════════════════════════════════════════════════════
+  readonly BUILT_PAGES = [
+    'dashboard', 'login', 'inventory', 'income', 'expense', 'menu', 'generate-bill'
+  ];
 
-  confirmDelete(id: number): void {
-    const exp = this.expenses.find(e => e.expenseId === id);
-    if (!exp) return;
-    this.pendingDeleteId = id;
-    this.confirmMsg      = `Delete "${exp.expenseName}"? This cannot be undone.`;
-    this.showConfirm     = true;
+  goTo(page: string): void {
+    if (this.BUILT_PAGES.includes(page)) this.router.navigate(['/' + page]);
   }
 
-  cancelDelete(): void {
-    this.showConfirm     = false;
-    this.pendingDeleteId = null;
+  handleLogout(): void {
+    if (confirm('Are you sure you want to logout?')) this.router.navigate(['/login']);
   }
 
-  // ════════════════════════════════════════
-  // TOAST
-  // ════════════════════════════════════════
-
-  showToast(msg: string, type: string = 'info'): void {
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Toast
+  // ══════════════════════════════════════════════════════════════════════════
+  showToast(msg: string, type: 'success' | 'danger' | 'info' = 'info'): void {
     this.toastMsg     = msg;
     this.toastType    = type;
     this.toastVisible = true;
     clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.toastVisible = false, 2800);
+    this.toastTimer = setTimeout(() => (this.toastVisible = false), 3000);
   }
 }

@@ -1,14 +1,15 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
 export interface AuthUser {
   userId:    number;
   userName:  string;
   email:     string;
   role:      string | null;
-  createdAt: string;
+  createdAt: string | null;
+  password?: string;
 }
 
 export interface LoginResponse {
@@ -26,42 +27,30 @@ export interface RegisterPayload {
 @Injectable({ providedIn: 'root' })
 export class AuthService {
 
-  private readonly BASE = 'http://192.168.1.39:3000/api';
-
-  private readonly TOKEN_KEY  = 'ft_token';
-  private readonly USER_KEY   = 'ft_user';
-  private readonly REMEMBER_KEY = 'ft_remember';
+  private readonly BASE               = 'http://192.168.1.39:3000/api';
+  private readonly TOKEN_KEY          = 'ft_token';
+  private readonly USER_KEY           = 'ft_user';
+  private readonly REMEMBER_KEY       = 'ft_remember';
+  private readonly EMPLOYEE_ADMIN_KEY = 'ft_employee_admin_id';
+  private readonly RESOLVED_ROLE_KEY  = 'ft_resolved_role';
 
   constructor(private http: HttpClient) {}
 
   // ════════════════════════════════════════
-  // REGISTER OWNER — POST /api/users/register-owner
-  // Returns token + user, auto logs in
+  // REGISTER
   // ════════════════════════════════════════
 
   registerOwner(payload: RegisterPayload): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(
-      `${this.BASE}/register-owner`,
+      `${this.BASE}/users/register-owner`,
       payload
     ).pipe(
       tap(res => this.persistSession(res.token, res.user))
     );
   }
 
-  // ── TODO: in-memory fallback ──
-  // registerOwner(payload: RegisterPayload): Observable<LoginResponse> {
-  //   const fakeRes: LoginResponse = {
-  //     token: 'fake-token',
-  //     message: 'Registration successful',
-  //     user: { userId: 1, userName: payload.username, email: payload.email, role: null, createdAt: new Date().toISOString() }
-  //   };
-  //   this.persistSession(fakeRes.token, fakeRes.user);
-  //   return of(fakeRes);
-  // }
-
   // ════════════════════════════════════════
-  // LOGIN — POST /api/users/register-owner
-  // (uses same endpoint since it returns a token)
+  // LOGIN
   // ════════════════════════════════════════
 
   login(username: string, password: string, rememberMe: boolean): Observable<LoginResponse> {
@@ -70,6 +59,8 @@ export class AuthService {
       { username, password }
     ).pipe(
       tap(res => {
+        // Persist whatever the server gives back; login.component
+        // will call updateStoredUser() to normalise field names.
         this.persistSession(res.token, res.user);
         if (rememberMe) {
           localStorage.setItem(this.REMEMBER_KEY, username);
@@ -80,36 +71,26 @@ export class AuthService {
     );
   }
 
-  // ── TODO: hardcoded fallback — remove when API is ready ──
-  // login(username: string, password: string, rememberMe: boolean): Observable<LoginResponse> {
-  //   if (username === 'admin' && password === 'admin') {
-  //     const fakeRes: LoginResponse = {
-  //       token: 'fake-token-admin',
-  //       message: 'Login successful',
-  //       user: { userId: 1, userName: 'admin', email: 'admin@demo.com', role: null, createdAt: new Date().toISOString() }
-  //     };
-  //     this.persistSession(fakeRes.token, fakeRes.user);
-  //     if (rememberMe) localStorage.setItem(this.REMEMBER_KEY, username);
-  //     return of(fakeRes);
-  //   }
-  //   return throwError(() => ({ error: { message: 'Invalid username or password.' } }));
-  // }
-
   // ════════════════════════════════════════
-  // GET USER BY ID — GET /api/users/get/{userId}
+  // GET USER BY ID
   // ════════════════════════════════════════
 
   getUserById(userId: number): Observable<AuthUser> {
-    return this.http.get<AuthUser>(`${this.BASE}/get/${userId}`);
+    return this.http.get<AuthUser>(
+      `${this.BASE}/users/get/${userId}`
+    );
   }
 
   // ════════════════════════════════════════
-  // UPDATE USER — PUT /api/users/update/{userId}
+  // UPDATE USER
   // ════════════════════════════════════════
 
-  updateUser(userId: number, changes: Partial<Pick<AuthUser, 'userName' | 'email'>>): Observable<AuthUser> {
+  updateUser(
+    userId:  number,
+    changes: Partial<Pick<AuthUser, 'userName' | 'email'>>
+  ): Observable<AuthUser> {
     return this.http.put<AuthUser>(
-      `${this.BASE}/update/${userId}`,
+      `${this.BASE}/users/update/${userId}`,
       changes
     ).pipe(
       tap(updated => {
@@ -122,13 +103,12 @@ export class AuthService {
   }
 
   // ════════════════════════════════════════
-  // DELETE USER — DELETE /api/users/delete/{userId}
-  // Returns plain text string
+  // DELETE USER
   // ════════════════════════════════════════
 
   deleteUser(userId: number): Observable<string> {
     return this.http.delete(
-      `${this.BASE}/delete/${userId}`,
+      `${this.BASE}/users/delete/${userId}`,
       { responseType: 'text' }
     );
   }
@@ -140,10 +120,15 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
+    localStorage.removeItem(this.REMEMBER_KEY);
+    localStorage.removeItem(this.EMPLOYEE_ADMIN_KEY);
+    localStorage.removeItem(this.RESOLVED_ROLE_KEY);
+    // Also clear profile override so next user gets a clean slate
+    localStorage.removeItem('ftProfile');
   }
 
   // ════════════════════════════════════════
-  // HELPERS — token / user from localStorage
+  // SESSION HELPERS
   // ════════════════════════════════════════
 
   getToken(): string | null {
@@ -153,11 +138,39 @@ export class AuthService {
   getCurrentUser(): AuthUser | null {
     const raw = localStorage.getItem(this.USER_KEY);
     if (!raw) return null;
-    try { return JSON.parse(raw); } catch { return null; }
+    try {
+      const parsed = JSON.parse(raw);
+
+      // ── Defensive normalisation on read ──
+      // Handles APIs that return username / name instead of userName
+      if (!parsed.userName && (parsed.username || parsed.name)) {
+        parsed.userName = parsed.username ?? parsed.name;
+      }
+      if (!parsed.userId && (parsed.id || parsed.user_id)) {
+        parsed.userId = parsed.id ?? parsed.user_id;
+      }
+
+      return parsed as AuthUser;
+    } catch {
+      return null;
+    }
   }
 
   getCurrentUserId(): number {
-    return this.getCurrentUser()?.userId ?? 1;
+    const user = this.getCurrentUser();
+    if (!user || !user.userId) {
+      console.warn('[AuthService] getCurrentUserId → no valid user in storage');
+      return 0;
+    }
+    return user.userId;
+  }
+
+  getCurrentUsername(): string {
+    return this.getCurrentUser()?.userName ?? '';
+  }
+
+  getCurrentEmail(): string {
+    return this.getCurrentUser()?.email ?? '';
   }
 
   isLoggedIn(): boolean {
@@ -168,8 +181,64 @@ export class AuthService {
     return localStorage.getItem(this.REMEMBER_KEY) ?? '';
   }
 
+  /**
+   * Merges partial changes into the stored user.
+   * Also accepts a full AuthUser to completely replace the stored record —
+   * used by login.component after normalising the API response.
+   */
+  updateStoredUser(updated: Partial<AuthUser>): void {
+    const token   = this.getToken();
+    const current = this.getCurrentUser();
+
+    if (token) {
+      // If a full user object is supplied (has userId), replace entirely
+      if ((updated as AuthUser).userId) {
+        this.persistSession(token, updated as AuthUser);
+      } else if (current) {
+        this.persistSession(token, { ...current, ...updated });
+      }
+    } else if (current) {
+      // No token yet (edge case): still update local record
+      const merged = (updated as AuthUser).userId
+        ? (updated as AuthUser)
+        : { ...current, ...updated };
+      localStorage.setItem(this.USER_KEY, JSON.stringify(merged));
+    }
+  }
+
+  // ════════════════════════════════════════
+  // EMPLOYEE ADMIN ID
+  // ════════════════════════════════════════
+
+  setEmployeeAdminId(id: number): void {
+    localStorage.setItem(this.EMPLOYEE_ADMIN_KEY, String(id));
+  }
+
+  getEmployeeAdminId(): number {
+    const stored = localStorage.getItem(this.EMPLOYEE_ADMIN_KEY);
+    if (stored && !isNaN(Number(stored))) return Number(stored);
+    console.warn('[AuthService] getEmployeeAdminId → falling back to userId');
+    return this.getCurrentUserId();
+  }
+
+  // ════════════════════════════════════════
+  // RESOLVED ROLE
+  // ════════════════════════════════════════
+
+  setResolvedRole(role: string): void {
+    localStorage.setItem(this.RESOLVED_ROLE_KEY, role.toLowerCase());
+  }
+
+  getResolvedRole(): string {
+    return localStorage.getItem(this.RESOLVED_ROLE_KEY) ?? 'admin';
+  }
+
+  // ════════════════════════════════════════
+  // PRIVATE
+  // ════════════════════════════════════════
+
   private persistSession(token: string, user: AuthUser): void {
     localStorage.setItem(this.TOKEN_KEY, token);
-    localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+    localStorage.setItem(this.USER_KEY,  JSON.stringify(user));
   }
 }

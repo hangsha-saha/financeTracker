@@ -9,76 +9,84 @@
     </div>
   </div>
 
-  <!-- Navigation Menu -->
+  <!-- Navigation Menu — each item hidden based on role -->
   <ul class="sidebar-menu">
-    <li>
+
+    <li *ngIf="canSee('dashboard')">
       <button [class.active]="isActive('dashboard')" (click)="goTo('dashboard')">
         Dashboard
       </button>
     </li>
-    <li>
+
+    <li *ngIf="canSee('income')">
       <button [class.active]="isActive('income')" (click)="goTo('income')">
         Income
       </button>
     </li>
-    <li>
+
+    <li *ngIf="canSee('expense')">
       <button [class.active]="isActive('expense')" (click)="goTo('expense')">
         Expenses
       </button>
     </li>
-    <li>
+
+    <li *ngIf="canSee('menu')">
       <button [class.active]="isActive('menu')" (click)="goTo('menu')">
         Menu
       </button>
     </li>
-    <li>
+
+    <li *ngIf="canSee('inventory')">
       <button [class.active]="isActive('inventory')" (click)="goTo('inventory')">
         Inventory
       </button>
     </li>
-    <li>
+
+    <li *ngIf="canSee('vendors')">
       <button [class.active]="isActive('vendors')" (click)="goTo('vendors')">
         Vendors
       </button>
     </li>
-    <li>
+
+    <li *ngIf="canSee('employees')">
       <button [class.active]="isActive('employees')" (click)="goTo('employees')">
         Employees
       </button>
     </li>
-    <li>
+
+    <li *ngIf="canSee('reports')">
       <button [class.active]="isActive('reports')" (click)="goTo('reports')">
         Reports
       </button>
     </li>
-    <li>
+
+    <li *ngIf="canSee('generate-bill')">
       <button [class.active]="isActive('generate-bill')" (click)="goTo('generate-bill')">
         Generate Bill
       </button>
     </li>
-    <li>
+
+    <li *ngIf="canSee('view-bills')">
       <button [class.active]="isActive('view-bills')" (click)="goTo('view-bills')">
         View Bills
       </button>
     </li>
+
   </ul>
 
   <!-- Profile Footer -->
   <div class="sidebar-footer">
 
-    <!-- Footer avatar -->
     <div class="sidebar-user-avatar" [class.has-photo]="!!avatarSrc">
+      <img *ngIf="avatarSrc"  [src]="avatarSrc" alt="Avatar">
       <span *ngIf="!avatarSrc">{{ sidebarInitial }}</span>
-      <img *ngIf="avatarSrc" [src]="avatarSrc" alt="Profile Photo">
     </div>
 
-    <!-- Name + Role -->
     <div class="sidebar-user-info">
       <strong>{{ sidebarName }}</strong>
       <p>{{ sidebarRole }}</p>
     </div>
 
-    <!-- Arrow + hint -->
     <div class="sidebar-user-arrow-wrap">
       <span class="sidebar-user-arrow">↑</span>
       <span class="sidebar-profile-hint">Profile</span>
@@ -88,10 +96,9 @@
     <div class="sidebar-profile-popup">
 
       <div class="spp-top">
-        <!-- Popup avatar -->
         <div class="spp-avatar-wrap" [class.has-photo]="!!avatarSrc">
+          <img *ngIf="avatarSrc"  [src]="avatarSrc" alt="Avatar">
           <span *ngIf="!avatarSrc">{{ sidebarInitial }}</span>
-          <img *ngIf="avatarSrc" [src]="avatarSrc" alt="Profile Photo">
         </div>
         <div>
           <div class="spp-name">{{ sidebarName }}</div>
@@ -104,9 +111,6 @@
         <button class="spp-item" (click)="goTo('profile')">
           <span class="spp-icon">👤</span> View Profile
         </button>
-        <button class="spp-item" (click)="goTo('settings')">
-          <span class="spp-icon">⚙️</span> Settings
-        </button>
         <div class="spp-divider"></div>
         <button class="spp-item spp-danger" (click)="handleLogout()">
           <span class="spp-icon">🚪</span> Logout
@@ -114,21 +118,19 @@
       </div>
 
     </div>
-    <!-- /sidebar-profile-popup -->
 
   </div>
-  <!-- /sidebar-footer -->
 
 </aside>
 
-<!-- Toast (global — works on every page) -->
+<!-- Toast -->
 <div class="toast"
   [class.show]="toastVisible"
   [class.success]="toastType === 'success'"
   [class.danger]="toastType === 'danger'"
   [class.info]="toastType === 'info'">
   <span *ngIf="toastType === 'success'">✅</span>
-  <span *ngIf="toastType === 'danger'">🗑️</span>
+  <span *ngIf="toastType === 'danger'">❌</span>
   <span *ngIf="toastType === 'info'">ℹ️</span>
   {{ toastMsg }}
 </div>

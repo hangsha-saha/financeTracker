@@ -1,279 +1,407 @@
 import {
   Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef
 } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 declare var Chart: any;
 declare var flatpickr: any;
 
+// ── API 1: summary scalars ──
+interface AnalyticsResponse {
+  totalIncome:      number;
+  totalExpense:     number;
+  netProfit:        number;
+  expenseBreakdown: { category: string; amount: number }[];
+  todayIncome:      number;
+  todayExpense:     number;
+  monthlyIncome:    number;
+  monthlyExpense:   number;
+  monthlyNetProfit: number;
+  yearlyIncome:     number;
+  yearlyExpense:    number;
+}
+
+// ── API 2: chart data ──
+interface ChartDataPoint {
+  label:   string;
+  income:  number;
+  expense: number;
+}
+interface ChartApiResponse {
+  period:   string;
+  category: string;
+  data:     ChartDataPoint[];
+}
+
+// Period values accepted by API 2
+type ChartPeriod = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'QUARTERLY' | 'FINANCIAL_YEAR' | 'PREVIOUS_YEAR';
+
 @Component({
-  selector: 'app-dashboard',
+  selector:    'app-dashboard',
   templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.css']
+  styleUrls:   ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild('incomeExpenseCanvas') incomeExpenseCanvas!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('expensePieCanvas')    expensePieCanvas!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('profitCanvas')        profitCanvas!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('expensePieCanvas')    expensePieCanvas!:    ElementRef<HTMLCanvasElement>;
+  @ViewChild('profitCanvas')        profitCanvas!:        ElementRef<HTMLCanvasElement>;
 
-  // Sidebar profile
-  sidebarName: string    = 'Admin User';
-  sidebarRole: string    = 'Admin';
-  sidebarInitial: string = 'A';
-  sidebarEmail: string   = 'admin@restaurant.com';
-  headerRoleLabel: string = 'ADMIN';
+  private readonly BASE     = 'http://192.168.1.39:3000';
+  private readonly BASE_API = 'http://192.168.1.21:8080';
 
-  // Notifications
-  notificationCount: number  = 3;
-  showNotifications: boolean = false;
+  // ── Header ──
+  headerRoleLabel = '';
 
-  // Filter state
-  currentPeriod: string       = 'daily';
-  currentSession: string      = 'all-sessions';
-  currentCategory: string     = 'all';
+  // ── Analytics data (API 1) ──
+  analyticsData: AnalyticsResponse | null = null;
+  isLoading  = false;
+  apiError   = '';
+
+  // ── Metric card values ──
+  metricTodayIncome    = '₹0';
+  metricTodayExpense   = '₹0';
+  metricMonthlyIncome  = '₹0';
+  metricMonthlyExpense = '₹0';
+  metricNetProfit      = '₹0';
+  metricTotalIncome    = '₹0';
+  metricTotalExpense   = '₹0';
+  metricYearlyIncome   = '₹0';
+  metricYearlyExpense  = '₹0';
+  metricRangeNetProfit = '₹0';
+
+  // ── Filter state ──
+  currentPeriod    = 'monthly';
+  currentSession   = 'all-sessions';
+  currentCategory  = 'all';
   currentDateRange: string | null = null;
+  rangeStart: Date | null = null;
+  rangeEnd:   Date | null = null;
 
-  // Active tag labels (shown in filter bar)
-  activeFilterTag: string    = 'Daily';
-  activeSessionTag: string   = '';
-  activeCategoryTag: string  = '';
-  activeDateTag: string      = '';
+  // ── Active tag labels ──
+  activeFilterTag   = 'Monthly';
+  activeSessionTag  = '';
+  activeCategoryTag = '';
+  activeDateTag     = '';
 
-  // Chart subtitle bindings
-  incomeExpenseSubtitle: string = 'Daily';
-  expensePieSubtitle: string    = 'All Categories';
-  profitSubtitle: string        = 'Daily';
+  // ── Chart subtitles ──
+  incomeExpenseSubtitle = 'Monthly';
+  expensePieSubtitle    = 'All Categories';
+  profitSubtitle        = 'Monthly';
 
-  // Chart instances
+  // ── Chart instances ──
   private incomeExpenseChart: any = null;
-  private expensePieChart: any    = null;
-  private profitChart: any        = null;
-  private fpInstance: any         = null;
-  private toastTimer: any;
+  private expensePieChart:    any = null;
+  private profitChart:        any = null;
+  private fpInstance:         any = null;
+  private toastTimer:         any;
 
-  // Toast
-  toastMessage: string  = '';
-  toastType: string     = '';
-  toastVisible: boolean = false;
+  // ── Toast ──
+  toastMessage = '';
+  toastType    = '';
+  toastVisible = false;
 
-  // ── Data ──
-  readonly BASE_DATA: any = {
-    daily: {
-      labels: ['7 AM','9 AM','11 AM','1 PM','3 PM','5 PM','7 PM','9 PM'],
-      income:  [1840,3250,6120,8940,4370,5680,9820,7600],
-      expense: [980,1640,3280,4760,2140,2890,5120,3940]
-    },
-    weekly: {
-      labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-      income:  [11200,9800,12400,13600,15800,22400,18900],
-      expense: [6840,6100,7680,8240,9200,12600,11400]
-    },
-    monthly: {
-      labels: ['Sep 25','Oct 25','Nov 25','Dec 25','Jan 26','Feb 26'],
-      income:  [264800,298400,271600,382000,304200,312400],
-      expense: [182600,201400,189200,248700,210800,218750]
-    },
-    quarterly: {
-      labels: ['Q1 Apr–Jun','Q2 Jul–Sep','Q3 Oct–Dec','Q4 Jan–Mar'],
-      income:  [842600,918400,1062000,923800],
-      expense: [601200,648800,724600,665400]
-    },
-    'financial-year': {
-      labels: ['FY 21-22','FY 22-23','FY 23-24','FY 24-25','FY 25-26'],
-      income:  [1842000,2214000,2687000,3128400,3746800],
-      expense: [1486000,1728000,2041000,2389600,2640000]
-    },
-    'prev-year': {
-      labels: ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'],
-      income:  [218400,241600,268000,252800,278400,314200,348600,362800,419400,296800,284200,343200],
-      expense: [158600,172400,189200,182800,196600,218400,236800,248600,286200,208400,199800,241600]
-    },
+  readonly PIE_COLORS = [
+    '#FF8C00','#4CAF50','#EF5350','#2196F3',
+    '#9C27B0','#FFB74D','#00BCD4','#795548'
+  ];
+
+  readonly PERIOD_LABELS: Record<string, string> = {
+    daily:            'Today',
+    weekly:           'This Week',
+    monthly:          'This Month',
+    quarterly:        'This Quarter',
+    'financial-year': 'Financial Year',
+    'prev-year':      'Previous Year',
   };
 
-  readonly DATE_RANGE_DATA: any = {
-    labels: ['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7'],
-    income:  [12400,14800,11600,18200,16400,21800,19600],
-    expense: [7800,9200,7100,10800,9600,12400,11200]
-  };
-
-  readonly EXPENSE_BREAKDOWN: any = {
-    all:           { labels:['Raw Materials','Salaries','Rent','Utilities','Marketing','Supplies'], data:[68400,82000,45000,18600,22400,14800] },
-    rent:          { labels:['Rent'], data:[45000] },
-    salaries:      { labels:['Salaries'], data:[82000] },
-    'raw-materials':{ labels:['Raw Materials'], data:[68400] },
-    utilities:     { labels:['Utilities'], data:[18600] },
-    supplies:      { labels:['Supplies'], data:[14800] },
-    marketing:     { labels:['Marketing'], data:[22400] },
-    'dine-in':     { labels:['Salaries','Raw Materials','Utilities'], data:[82000,38400,12600] },
-    online:        { labels:['Marketing','Supplies','Utilities'], data:[22400,14800,6000] },
-    takeaway:      { labels:['Raw Materials','Packaging','Supplies'], data:[30000,12000,14800] },
-    delivery:      { labels:['Raw Materials','Marketing','Packaging'], data:[30000,22400,12000] },
-  };
-
-  readonly SESSION_MULT: any = {
-    'all-sessions': 1, breakfast: 0.12, brunch: 0.18,
-    lunch: 0.32, snacks: 0.10, dinner: 0.38
-  };
-
-  readonly SESSION_LABELS: any = {
+  readonly SESSION_LABELS: Record<string, string> = {
     'all-sessions': 'All Sessions', breakfast: 'Breakfast',
-    brunch: 'Brunch', lunch: 'Lunch', snacks: 'Snacks', dinner: 'Dinner'
+    brunch: 'Brunch', lunch: 'Lunch', snacks: 'Snacks', dinner: 'Dinner',
   };
 
-  readonly PERIOD_LABELS: any = {
-    daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly',
-    quarterly: 'Quarterly', 'financial-year': 'Financial Year', 'prev-year': 'Previous Year'
+  // Map UI period → API 2 period enum
+  private readonly PERIOD_TO_CHART_API: Record<string, ChartPeriod> = {
+    daily:            'DAILY',
+    weekly:           'WEEKLY',
+    monthly:          'MONTHLY',
+    quarterly:        'QUARTERLY',
+    'financial-year': 'FINANCIAL_YEAR',
+    'prev-year':      'PREVIOUS_YEAR',
   };
 
-  readonly PIE_COLORS = ['#FF8C00','#4CAF50','#EF5350','#2196F3','#9C27B0','#FFB74D','#00BCD4','#795548'];
-
-  constructor(private router: Router) {}
+  constructor(
+    private http:        HttpClient,
+    private router:      Router,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
-    this.loadSidebarProfile();
+    this.loadHeaderProfile();
+    this.fetchAll();
   }
 
   ngAfterViewInit(): void {
-    // Small delay ensures canvas elements are in the DOM
-    setTimeout(() => {
-      this.buildCharts();
-      this.updateAllCharts();
-      this.initFlatpickr();
-    }, 200);
+    this.buildCharts();
+    this.initFlatpickr();
   }
 
   ngOnDestroy(): void {
-    if (this.incomeExpenseChart) { this.incomeExpenseChart.destroy(); this.incomeExpenseChart = null; }
-    if (this.expensePieChart)    { this.expensePieChart.destroy();    this.expensePieChart = null; }
-    if (this.profitChart)        { this.profitChart.destroy();        this.profitChart = null; }
-    if (this.fpInstance)         { this.fpInstance.destroy(); }
+    [this.incomeExpenseChart, this.expensePieChart, this.profitChart]
+      .forEach(c => { if (c) c.destroy(); });
+    if (this.fpInstance) this.fpInstance.destroy();
     clearTimeout(this.toastTimer);
   }
 
-  // ── Profile ──
-  loadSidebarProfile(): void {
+  // ════════════════════════════════════════
+  // PROFILE
+  // ════════════════════════════════════════
+
+  loadHeaderProfile(): void {
     try {
+      const authUser = this.authService.getCurrentUser();
+      if (authUser) this.headerRoleLabel = (authUser.role || 'admin').toUpperCase();
       const raw = localStorage.getItem('ftProfile');
-      if (raw) {
-        const p = JSON.parse(raw);
-        const roleMap: any = { admin:'Admin', manager:'Manager', cashier:'Cashier', staff:'Staff' };
-        this.sidebarName    = p.displayName || `${p.firstName} ${p.lastName}`;
-        this.sidebarRole    = roleMap[p.role] || 'Admin';
-        this.sidebarInitial = (p.firstName || 'A')[0].toUpperCase();
-        this.sidebarEmail   = p.email || 'admin@restaurant.com';
-        this.headerRoleLabel = this.sidebarRole.toUpperCase();
+      if (raw) { const p = JSON.parse(raw); if (p.role) this.headerRoleLabel = p.role.toUpperCase(); }
+    } catch (e) { this.headerRoleLabel = 'ADMIN'; }
+  }
+
+  // ════════════════════════════════════════
+  // DATE HELPERS  (for API 1 only)
+  // ════════════════════════════════════════
+
+  private toApiDate(d: Date): string {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}-${mm}-${d.getFullYear()}`;
+  }
+
+  private getDateRange(): { startDate: string; endDate: string } {
+    const now   = new Date();
+    const today = this.toApiDate(now);
+
+    if (this.rangeStart && this.rangeEnd)
+      return { startDate: this.toApiDate(this.rangeStart), endDate: this.toApiDate(this.rangeEnd) };
+
+    switch (this.currentPeriod) {
+      case 'daily':
+        return { startDate: today, endDate: today };
+      case 'weekly': {
+        const day = now.getDay();
+        const mon = new Date(now); mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+        return { startDate: this.toApiDate(mon), endDate: today };
       }
-    } catch(e) {}
-  }
-
-  // ── Navigation ──
-  // Pages that are built and registered in the router
-  private readonly BUILT_PAGES = ['dashboard', 'login', 'inventory', 'income','expense', 'menu','generate-bill'];
-
-  goTo(page: string): void {
-    if (this.BUILT_PAGES.includes(page)) {
-      this.router.navigate(['/' + page]);
-    } else {
-      this.showToast(`"${this.capitalize(page)}" page coming soon!`, 'info');
+      case 'monthly': {
+        const first = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { startDate: this.toApiDate(first), endDate: today };
+      }
+      case 'quarterly': {
+        const q     = Math.floor(now.getMonth() / 3);
+        const first = new Date(now.getFullYear(), q * 3, 1);
+        return { startDate: this.toApiDate(first), endDate: today };
+      }
+      case 'financial-year': {
+        const fyStart = now.getMonth() >= 3
+          ? new Date(now.getFullYear(), 3, 1)
+          : new Date(now.getFullYear() - 1, 3, 1);
+        return { startDate: this.toApiDate(fyStart), endDate: today };
+      }
+      case 'prev-year': {
+        const prevStart = new Date(now.getFullYear() - 1, 0, 1);
+        const prevEnd   = new Date(now.getFullYear() - 1, 11, 31);
+        return { startDate: this.toApiDate(prevStart), endDate: this.toApiDate(prevEnd) };
+      }
+      default:
+        return { startDate: today, endDate: today };
     }
   }
 
-  private capitalize(s: string): string {
-    return s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, ' ');
+  // ════════════════════════════════════════
+  // FETCH BOTH APIs IN PARALLEL
+  // ════════════════════════════════════════
+
+  fetchAll(): void {
+    this.isLoading = true;
+    this.apiError  = '';
+
+    const userId               = this.authService.getCurrentUserId();
+    const { startDate, endDate } = this.getDateRange();
+
+    // API 1 — summary scalars
+    const url1 = `${this.BASE}/analytics/user/${userId}?startDate=${startDate}&endDate=${endDate}`;
+
+    // API 2 — chart data
+    // For custom date range we fall back to MONTHLY bars (API 2 doesn't take a date range)
+    const chartPeriod: ChartPeriod = this.currentDateRange
+      ? 'MONTHLY'
+      : (this.PERIOD_TO_CHART_API[this.currentPeriod] || 'MONTHLY');
+    const url2 = `${this.BASE}/analytics/income-expense?ownerId=${userId}&period=${chartPeriod}&category=ALL`;
+
+    console.log('[Dashboard] API1:', url1);
+    console.log('[Dashboard] API2:', url2);
+
+    // Fire both together
+    this.http.get<AnalyticsResponse>(url1).subscribe({
+      next: (summary) => {
+        this.analyticsData = summary;
+        this.updateMetricCards(summary);
+
+        this.http.get<ChartApiResponse>(url2).subscribe({
+          next: (chart) => {
+            this.isLoading = false;
+            this.updateAllCharts(summary, chart.data);
+          },
+          error: (err) => {
+            console.error('[Dashboard] Chart API error:', err);
+            this.isLoading = false;
+            // Degrade gracefully — show 2-bar daily fallback using summary
+            const fallback: ChartDataPoint[] = [
+              { label: 'Income',  income: summary.totalIncome,  expense: 0 },
+              { label: 'Expense', income: 0, expense: summary.totalExpense },
+            ];
+            this.updateAllCharts(summary, fallback);
+            this.showToast('Chart data unavailable, showing totals only', 'error');
+          }
+        });
+      },
+      error: (err) => {
+        console.error('[Dashboard] Summary API error:', err);
+        this.apiError  = 'Failed to load analytics data.';
+        this.isLoading = false;
+        this.showToast('Failed to load analytics', 'error');
+      }
+    });
   }
 
-  handleLogout(): void {
-    if (confirm('Are you sure you want to logout?')) {
-      this.router.navigate(['/login']);
-    }
+  // Alias used by HTML retry button and filter resets
+  fetchAnalytics(): void { this.fetchAll(); }
+
+  // ════════════════════════════════════════
+  // UPDATE METRIC CARDS
+  // ════════════════════════════════════════
+
+  private updateMetricCards(data: AnalyticsResponse): void {
+    this.metricTodayIncome    = this.inr(data.todayIncome);
+    this.metricTodayExpense   = this.inr(data.todayExpense);
+    this.metricMonthlyIncome  = this.inr(data.monthlyIncome);
+    this.metricMonthlyExpense = this.inr(data.monthlyExpense);
+    this.metricNetProfit      = this.inr(data.monthlyNetProfit);
+    this.metricTotalIncome    = this.inr(data.totalIncome);
+    this.metricTotalExpense   = this.inr(data.totalExpense);
+    this.metricYearlyIncome   = this.inr(data.yearlyIncome);
+    this.metricYearlyExpense  = this.inr(data.yearlyExpense);
+    this.metricRangeNetProfit = this.inr(data.netProfit);
   }
 
-  // ── Notifications ──
-  toggleNotifications(event: Event): void {
-    event.stopPropagation();
-    this.showNotifications = !this.showNotifications;
-    if (this.showNotifications) this.notificationCount = 0;
+  private inr(n: number): string {
+    return '₹' + (n || 0).toLocaleString('en-IN');
   }
 
-  closeNotifications(): void { this.showNotifications = false; }
+  // ════════════════════════════════════════
+  // FILTERS
+  // ════════════════════════════════════════
 
-  // ── Filters ──
   setPeriod(period: string): void {
-    this.currentPeriod = period;
+    this.currentPeriod    = period;
+    this.rangeStart       = null;
+    this.rangeEnd         = null;
     this.currentDateRange = null;
     if (this.fpInstance) this.fpInstance.clear();
-    this.updateAllCharts();
+    this.fetchAll();
   }
 
   setSession(session: string): void {
     this.currentSession = session;
-    this.updateAllCharts();
+    if (session !== 'all-sessions') {
+      this.showToast('Session breakdown is not available from the API.', 'error');
+    }
+    if (this.analyticsData) {
+      const sLabel = this.SESSION_LABELS[session] || session;
+      this.activeSessionTag      = session !== 'all-sessions' ? sLabel : '';
+      this.incomeExpenseSubtitle = (this.PERIOD_LABELS[this.currentPeriod] || 'Custom')
+        + ' · ' + (session !== 'all-sessions' ? sLabel : 'All Sessions');
+      this.profitSubtitle = this.incomeExpenseSubtitle;
+    }
   }
 
   setCategory(event: Event): void {
     this.currentCategory = (event.target as HTMLSelectElement).value;
-    this.updateAllCharts();
+    if (this.analyticsData) {
+      // Re-filter doughnut only — bar/line data comes from API 2 which already has its own category
+      this.updatePieChart(this.analyticsData);
+      this.updateSubtitleTags();
+    }
   }
 
   resetAllFilters(): void {
-    this.currentPeriod   = 'daily';
-    this.currentSession  = 'all-sessions';
-    this.currentCategory = 'all';
+    this.currentPeriod    = 'monthly';
+    this.currentSession   = 'all-sessions';
+    this.currentCategory  = 'all';
+    this.rangeStart       = null;
+    this.rangeEnd         = null;
     this.currentDateRange = null;
     if (this.fpInstance) this.fpInstance.clear();
     const sel = document.getElementById('categoryFilter') as HTMLSelectElement;
     if (sel) sel.value = 'all';
-    this.updateAllCharts();
+    this.fetchAll();
   }
 
-  resetZoom(): void { if (this.profitChart) this.profitChart.resetZoom(); }
+  resetZoom(): void {
+    if (this.profitChart) { try { this.profitChart.resetZoom(); } catch (e) {} }
+  }
 
-  isPeriodActive(p: string): boolean  { return this.currentPeriod === p; }
+  isPeriodActive(p: string):  boolean { return this.currentPeriod  === p; }
   isSessionActive(s: string): boolean { return this.currentSession === s; }
+  closeNotifications(): void {}
 
-  // ── Flatpickr ──
+  // ════════════════════════════════════════
+  // FLATPICKR
+  // ════════════════════════════════════════
+
   initFlatpickr(): void {
+    if (typeof flatpickr === 'undefined') return;
     this.fpInstance = flatpickr('#dateRangeFilter', {
-      mode: 'range',
+      mode:       'range',
       dateFormat: 'd M Y',
-      maxDate: 'today',
-      onChange: (dates: Date[], dateStr: string) => {
+      maxDate:    'today',
+      onChange:   (dates: Date[], dateStr: string) => {
         if (dates.length === 2) {
+          this.rangeStart       = dates[0];
+          this.rangeEnd         = dates[1];
           this.currentDateRange = dateStr;
           this.currentPeriod    = '';
-          this.updateAllCharts();
+          this.fetchAll();
         }
       }
     });
   }
 
-  // ── Build Charts ──
+  // ════════════════════════════════════════
+  // BUILD CHARTS (empty shells on init)
+  // ════════════════════════════════════════
+
   buildCharts(): void {
-    if (typeof Chart === 'undefined') {
-      console.error('Chart.js not loaded. Check angular.json scripts.');
-      return;
-    }
+    if (typeof Chart === 'undefined') return;
 
-    // Register zoom plugin if available
     try {
-      const zoomPlugin = (window as any).ChartZoom || (window as any)['chartjs-plugin-zoom'];
-      if (zoomPlugin) Chart.register(zoomPlugin);
-    } catch(e) {}
+      const zp = (window as any).ChartZoom || (window as any)['chartjs-plugin-zoom'];
+      if (zp) Chart.register(zp);
+    } catch (e) {}
 
-    // ── Income vs Expense Bar Chart ──
+    // ── Bar: Income vs Expense ──
     this.incomeExpenseChart = new Chart(this.incomeExpenseCanvas.nativeElement, {
       type: 'bar',
       data: {
         labels: [],
         datasets: [
-          { label: 'Income',  data: [], backgroundColor: 'rgba(76,175,80,0.85)',  borderRadius: 6, borderSkipped: false },
-          { label: 'Expense', data: [], backgroundColor: 'rgba(239,83,80,0.85)', borderRadius: 6, borderSkipped: false },
+          { label: 'Income',  data: [], backgroundColor: 'rgba(76,175,80,0.85)',  borderRadius: 6 },
+          { label: 'Expense', data: [], backgroundColor: 'rgba(239,83,80,0.85)', borderRadius: 6 },
         ]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } },
           tooltip: {
@@ -286,30 +414,22 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
           y: {
             beginAtZero: true,
             grid: { color: 'rgba(0,0,0,0.05)' },
-            ticks: { callback: (v: number) => '₹' + v.toLocaleString('en-IN') }
+            ticks: { callback: (v: any) => '₹' + Number(v).toLocaleString('en-IN') }
           }
         },
         animation: { duration: 600, easing: 'easeOutQuart' }
       }
     });
 
-    // ── Expense Breakdown Doughnut ──
+    // ── Doughnut: Expense Breakdown ──
     this.expensePieChart = new Chart(this.expensePieCanvas.nativeElement, {
       type: 'doughnut',
       data: {
         labels: [],
-        datasets: [{
-          data: [],
-          backgroundColor: this.PIE_COLORS,
-          borderWidth: 3,
-          borderColor: '#fff',
-          hoverOffset: 8
-        }]
+        datasets: [{ data: [], backgroundColor: this.PIE_COLORS, borderWidth: 3, borderColor: '#fff', hoverOffset: 8 }]
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '60%',
+        responsive: true, maintainAspectRatio: false, cutout: '60%',
         plugins: {
           legend: { position: 'bottom', labels: { usePointStyle: true, padding: 12 } },
           tooltip: {
@@ -321,82 +441,59 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     });
 
-    // ── Profit Trend Line Chart ──
-    const canvas   = this.profitCanvas.nativeElement;
-    const ctx      = canvas.getContext('2d')!;
+    // ── Line: Profit Trend ──
+    const ctx      = this.profitCanvas.nativeElement.getContext('2d')!;
     const gradient = ctx.createLinearGradient(0, 0, 0, 380);
     gradient.addColorStop(0, 'rgba(255,140,0,0.40)');
     gradient.addColorStop(1, 'rgba(255,140,0,0.01)');
 
     const profitOptions: any = {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } },
         tooltip: {
           backgroundColor: '#1a1a1a', padding: 12, cornerRadius: 8,
           callbacks: { label: (ctx: any) => ` ${ctx.dataset.label}: ₹${ctx.parsed.y.toLocaleString('en-IN')}` }
+        },
+        zoom: {
+          pan:  { enabled: true, mode: 'x' },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
         }
       },
       scales: {
         x: { grid: { display: false } },
         y: {
-          beginAtZero: true,
+          beginAtZero: false,
           grid: { color: 'rgba(0,0,0,0.05)' },
-          ticks: { callback: (v: number) => '₹' + v.toLocaleString('en-IN') }
+          ticks: { callback: (v: any) => '₹' + Number(v).toLocaleString('en-IN') }
         }
       },
       animation: { duration: 800, easing: 'easeOutQuart' }
     };
 
-    // Add zoom plugin options only if plugin loaded
-    try {
-      profitOptions.plugins.zoom = {
-        pan: { enabled: true, mode: 'x' },
-        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
-      };
-    } catch(e) {}
-
-    this.profitChart = new Chart(canvas, {
+    this.profitChart = new Chart(this.profitCanvas.nativeElement, {
       type: 'line',
       data: {
         labels: [],
         datasets: [
           {
-            label: 'Profit',
-            data: [],
-            borderColor: '#FF8C00',
-            backgroundColor: gradient,
-            fill: true,
-            tension: 0.45,
-            pointRadius: 6,
-            pointHoverRadius: 10,
-            pointBackgroundColor: '#fff',
-            pointBorderColor: '#FF8C00',
-            pointBorderWidth: 3,
-            borderWidth: 3
+            label: 'Profit', data: [],
+            borderColor: '#FF8C00', backgroundColor: gradient,
+            fill: true, tension: 0.45, pointRadius: 6, pointHoverRadius: 10,
+            pointBackgroundColor: '#fff', pointBorderColor: '#FF8C00',
+            pointBorderWidth: 3, borderWidth: 3
           },
           {
-            label: 'Income',
-            data: [],
-            borderColor: 'rgba(76,175,80,0.8)',
-            backgroundColor: 'transparent',
-            fill: false,
-            tension: 0.4,
-            pointRadius: 4,
-            borderWidth: 2,
+            label: 'Income', data: [],
+            borderColor: 'rgba(76,175,80,0.8)', backgroundColor: 'transparent',
+            fill: false, tension: 0.4, pointRadius: 4, borderWidth: 2,
             borderDash: [6, 4]
           },
           {
-            label: 'Expense',
-            data: [],
-            borderColor: 'rgba(239,83,80,0.8)',
-            backgroundColor: 'transparent',
-            fill: false,
-            tension: 0.4,
-            pointRadius: 4,
-            borderWidth: 2,
+            label: 'Expense', data: [],
+            borderColor: 'rgba(239,83,80,0.8)', backgroundColor: 'transparent',
+            fill: false, tension: 0.4, pointRadius: 4, borderWidth: 2,
             borderDash: [6, 4]
           },
         ]
@@ -405,63 +502,102 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  // ── Update All Charts ──
-  updateAllCharts(): void {
+  // ════════════════════════════════════════
+  // UPDATE ALL CHARTS
+  // chartPoints come directly from API 2 response
+  // ════════════════════════════════════════
+
+  updateAllCharts(summary: AnalyticsResponse, chartPoints: ChartDataPoint[]): void {
     if (!this.incomeExpenseChart || !this.expensePieChart || !this.profitChart) return;
 
-    const base    = this.currentDateRange
-      ? this.DATE_RANGE_DATA
-      : (this.BASE_DATA[this.currentPeriod] || this.BASE_DATA['daily']);
+    // ── 1. For DAILY: API 2 returns no useful breakdown — just show Income vs Expense ──
+    let points = chartPoints;
+    if (this.currentPeriod === 'daily') {
+      points = [
+        { label: 'Income',  income: summary.todayIncome,  expense: 0 },
+        { label: 'Expense', income: 0, expense: summary.todayExpense },
+      ];
+    }
 
-    const mult    = this.SESSION_MULT[this.currentSession] ?? 1;
-    const income  = base.income.map((v: number) => Math.round(v * mult));
-    const expense = base.expense.map((v: number) => Math.round(v * (mult * 0.85 + 0.15)));
-    const profit  = income.map((v: number, i: number) => v - expense[i]);
+    const labels   = points.map(p => p.label);
+    const incomes  = points.map(p => p.income);
+    const expenses = points.map(p => p.expense);
+    const profits  = points.map(p => p.income - p.expense);
 
-    // Bar chart
-    this.incomeExpenseChart.data.labels            = [...base.labels];
-    this.incomeExpenseChart.data.datasets[0].data  = income;
-    this.incomeExpenseChart.data.datasets[1].data  = expense;
+    // ── 2. Bar chart ──
+    this.incomeExpenseChart.data.labels           = labels;
+    this.incomeExpenseChart.data.datasets[0].data = incomes;
+    this.incomeExpenseChart.data.datasets[1].data = expenses;
     this.incomeExpenseChart.update();
 
-    // Doughnut chart
-    const pie = this.EXPENSE_BREAKDOWN[this.currentCategory] || this.EXPENSE_BREAKDOWN['all'];
-    this.expensePieChart.data.labels                         = [...pie.labels];
-    this.expensePieChart.data.datasets[0].data               = [...pie.data];
-    this.expensePieChart.data.datasets[0].backgroundColor    = this.PIE_COLORS.slice(0, pie.labels.length);
-    this.expensePieChart.update();
+    // ── 3. Doughnut ──
+    this.updatePieChart(summary);
 
-    // Profit line chart
-    this.profitChart.data.labels           = [...base.labels];
-    this.profitChart.data.datasets[0].data = profit;
-    this.profitChart.data.datasets[1].data = income;
-    this.profitChart.data.datasets[2].data = expense;
-    try { this.profitChart.resetZoom(); } catch(e) {}
+    // ── 4. Line chart ──
+    this.profitChart.data.labels           = labels;
+    this.profitChart.data.datasets[0].data = profits;
+    this.profitChart.data.datasets[1].data = incomes;
+    this.profitChart.data.datasets[2].data = expenses;
+    try { this.profitChart.resetZoom(); } catch (e) {}
     this.profitChart.update();
 
-    // Update label tags
+    // ── 5. Subtitles & tags ──
+    this.updateSubtitleTags();
+  }
+
+  // ── Doughnut: uses expenseBreakdown from API 1, filtered by category ──
+  private updatePieChart(summary: AnalyticsResponse): void {
+    if (!this.expensePieChart) return;
+
+    let breakdown = summary.expenseBreakdown || [];
+
+    if (this.currentCategory !== 'all') {
+      const CAT_MAP: Record<string, string[]> = {
+        rent:            ['Rent'],
+        salaries:        ['Salaries', 'Salary'],
+        'raw-materials': ['Raw Materials', 'RawMaterials'],
+        utilities:       ['Utilities'],
+        supplies:        ['Supplies'],
+        marketing:       ['Marketing'],
+      };
+      const allowed = (CAT_MAP[this.currentCategory] || []).map(s => s.toLowerCase());
+      breakdown = breakdown.filter(b => allowed.includes(b.category.toLowerCase()));
+    }
+
+    const pieLabels = breakdown.map(b => b.category);
+    const pieData   = breakdown.map(b => b.amount);
+
+    this.expensePieChart.data.labels                      = pieLabels;
+    this.expensePieChart.data.datasets[0].data            = pieData;
+    this.expensePieChart.data.datasets[0].backgroundColor = this.PIE_COLORS.slice(0, pieLabels.length);
+    this.expensePieChart.update();
+  }
+
+  private updateSubtitleTags(): void {
     const pLabel = this.currentDateRange
       ? 'Custom Range'
       : (this.PERIOD_LABELS[this.currentPeriod] || this.currentPeriod);
     const sLabel = this.SESSION_LABELS[this.currentSession] || this.currentSession;
-
     const sel    = document.getElementById('categoryFilter') as HTMLSelectElement;
     const cLabel = this.currentCategory === 'all'
       ? 'All Categories'
       : (sel?.options[sel.selectedIndex]?.text || this.currentCategory);
 
-    this.activeFilterTag    = pLabel;
-    this.activeSessionTag   = this.currentSession !== 'all-sessions' ? sLabel : '';
-    this.activeCategoryTag  = this.currentCategory !== 'all' ? cLabel : '';
-    this.activeDateTag      = this.currentDateRange ? `📅 ${this.currentDateRange}` : '';
+    this.activeFilterTag   = pLabel;
+    this.activeSessionTag  = this.currentSession !== 'all-sessions' ? sLabel : '';
+    this.activeCategoryTag = this.currentCategory !== 'all' ? cLabel : '';
+    this.activeDateTag     = this.currentDateRange ? `📅 ${this.currentDateRange}` : '';
 
-    this.incomeExpenseSubtitle = `${pLabel} · ${sLabel}`;
+    this.incomeExpenseSubtitle = `${pLabel}`;
     this.expensePieSubtitle    = cLabel;
-    this.profitSubtitle        = `${pLabel} · ${sLabel}`;
+    this.profitSubtitle        = `${pLabel}`;
   }
 
-  // ── Toast ──
-  showToast(msg: string, type: string = ''): void {
+  // ════════════════════════════════════════
+  // TOAST
+  // ════════════════════════════════════════
+
+  showToast(msg: string, type = ''): void {
     this.toastMessage = msg;
     this.toastType    = type;
     this.toastVisible = true;

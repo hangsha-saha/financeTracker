@@ -1,0 +1,402 @@
+<main class="main-content">
+
+  <header class="header">
+    <div class="header-content">
+      <h1>My Profile</h1>
+      <p>Manage your account and preferences</p>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="profile-grid">
+
+      <!-- ══════ LEFT CARD ══════ -->
+      <div class="profile-left">
+
+        <div class="avatar-ring">
+          <div class="avatar-inner">
+            <img [src]="avatarSrc" alt="Profile Photo">
+          </div>
+        </div>
+
+        <div class="left-name">{{ leftName }}</div>
+        <div class="left-badge">{{ leftBadge }}</div>
+        <div class="left-email">{{ leftEmail }}</div>
+
+        <button class="left-back-btn" (click)="goToDashboard()">
+          ← Back to Dashboard
+        </button>
+
+        <div class="left-stats">
+          <div class="left-stat">
+            <div class="left-stat-val">142</div>
+            <div class="left-stat-lbl">Bills</div>
+          </div>
+          <div class="left-stat">
+            <div class="left-stat-val">38</div>
+            <div class="left-stat-lbl">Reports</div>
+          </div>
+          <div class="left-stat">
+            <div class="left-stat-val">6</div>
+            <div class="left-stat-lbl">Months</div>
+          </div>
+        </div>
+
+      </div>
+      <!-- /profile-left -->
+
+      <!-- ══════ RIGHT SECTIONS ══════ -->
+      <div class="profile-right">
+
+        <!-- ── SECTION 1: Personal Information ── -->
+        <div class="pg-section">
+          <div class="sec-hd">
+            <span class="sec-hd-title">Personal Information</span>
+            <span class="sec-hd-icon">👤</span>
+          </div>
+
+          <div class="form-row d-block">
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input type="text" class="form-input"
+                [(ngModel)]="fFirst"
+                placeholder="Enter first name">
+            </div>
+          </div>
+
+          <div class="form-row d-block">
+            <div class="form-group">
+              <label class="form-label">Role</label>
+              <input type="text" class="form-input"
+                [(ngModel)]="fRole"
+                placeholder="Name shown across the app">
+            </div>
+            <!-- <div class="form-group">
+              <label class="form-label">Role</label>
+              <select class="form-select" [(ngModel)]="fRole" disabled>
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+                <option value="cashier">Cashier</option>
+                <option value="waiter">Waiter</option>
+                <option value="staff">Staff</option>
+              </select>
+            </div> -->
+          </div>
+
+          <!-- <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" class="form-input"
+                [(ngModel)]="fPhone"
+                placeholder="+91 98765 43210">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date of Birth</label>
+              <input type="date" class="form-input"
+                [(ngModel)]="fDob">
+            </div>
+          </div> -->
+
+          <!-- <div class="form-group">
+            <label class="form-label">Bio</label>
+            <textarea class="form-textarea"
+              [(ngModel)]="fBio"
+              placeholder="A short description about yourself"
+              rows="3">
+            </textarea>
+          </div> -->
+
+          <div class="sec-actions">
+            <button class="btn btn-secondary" (click)="resetPersonal()">
+              Reset
+            </button>
+            <button class="btn btn-primary" (click)="savePersonal()">
+              Save Changes
+            </button>
+          </div>
+        </div>
+
+        <!-- ── SECTION 2: Restaurant Details ── -->
+        <div class="pg-section">
+          <div class="sec-hd">
+            <span class="sec-hd-title">Restaurant Details</span>
+            <span class="sec-hd-icon">🏠</span>
+          </div>
+
+          <!-- Loading -->
+          <div class="restaurant-loading" *ngIf="isLoadingRestaurants">
+            <div class="loading-spinner"></div>
+            <span>Loading restaurant details...</span>
+          </div>
+
+          <!-- No data prompt -->
+          <div class="restaurant-empty"
+            *ngIf="!isLoadingRestaurants && !hasRestaurantData()">
+            <div class="empty-icon">🍽️</div>
+            <div class="empty-title">No Restaurant Added Yet</div>
+            <div class="empty-desc">
+              Add your restaurant details to manage billing and reports efficiently.
+            </div>
+            <button class="btn btn-primary" (click)="openRestaurantModal()">
+              + Add Restaurant
+            </button>
+          </div>
+
+          <!-- Has data: summary card -->
+          <div class="restaurant-summary"
+            *ngIf="!isLoadingRestaurants && hasRestaurantData()">
+
+            <div class="rs-row">
+              <div class="rs-item">
+                <span class="rs-label">Restaurant Name</span>
+                <span class="rs-value">{{ fRestaurant || '—' }}</span>
+              </div>
+              <div class="rs-item">
+                <span class="rs-label">GST Number</span>
+                <span class="rs-value">{{ fGst || '—' }}</span>
+              </div>
+            </div>
+
+            <div class="rs-item rs-full">
+              <span class="rs-label">Address</span>
+              <span class="rs-value">{{ fAddress || '—' }}</span>
+            </div>
+
+            <!-- Multiple restaurants list -->
+            <div class="rs-others" *ngIf="restaurants.length > 1">
+              <div class="rs-others-label">Other Restaurants</div>
+              <div class="rs-other-item"
+                *ngFor="let r of restaurants"
+                [class.active]="activeRestaurant?.id === r.id"
+                (click)="setActiveRestaurant(r)">
+                <span class="rs-other-name">{{ r.restaurantName }}</span>
+                <span class="rs-other-badge"
+                  *ngIf="activeRestaurant?.id === r.id">
+                  Active
+                </span>
+              </div>
+            </div>
+
+            <div class="sec-actions" style="margin-top: var(--spacing-lg);">
+              <button class="btn btn-secondary"
+                (click)="openRestaurantModal()">
+                ✏️ Edit Restaurant
+              </button>
+              <!-- <button class="btn btn-primary"
+                (click)="openRestaurantModal()">
+                + Add Another
+              </button> -->
+            </div>
+
+          </div>
+          <!-- /restaurant-summary -->
+
+        </div>
+
+        <!-- ── SECTION 3: Change Password ── -->
+        <div class="pg-section">
+          <div class="sec-hd">
+            <span class="sec-hd-title">Change Password</span>
+            <span class="sec-hd-icon">🔒</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Current Password</label>
+            <div class="pw-wrap">
+              <input
+                [type]="showCurPw ? 'text' : 'password'"
+                class="form-input"
+                [(ngModel)]="fCurPw"
+                placeholder="Enter current password">
+              <button class="pw-eye" type="button" (click)="togglePw('cur')">
+                <svg *ngIf="!showCurPw" xmlns="http://www.w3.org/2000/svg"
+                  width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <svg *ngIf="showCurPw" xmlns="http://www.w3.org/2000/svg"
+                  width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">New Password</label>
+              <div class="pw-wrap">
+                <input
+                  [type]="showNewPw ? 'text' : 'password'"
+                  class="form-input"
+                  [(ngModel)]="fNewPw"
+                  placeholder="Min. 8 characters"
+                  (input)="checkPwStrength()">
+                <button class="pw-eye" type="button" (click)="togglePw('new')">
+                  <svg *ngIf="!showNewPw" xmlns="http://www.w3.org/2000/svg"
+                    width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg *ngIf="showNewPw" xmlns="http://www.w3.org/2000/svg"
+                    width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+              <!-- Strength bar -->
+              <div class="pw-bar">
+                <div class="pw-fill"
+                  [style.width]="pwStrengthWidth"
+                  [style.background]="pwStrengthColor">
+                </div>
+              </div>
+              <div class="pw-bar-lbl"
+                [style.color]="pwStrengthColor || 'var(--text-tertiary)'">
+                {{ pwStrengthLabel }}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Confirm Password</label>
+              <div class="pw-wrap">
+                <input
+                  [type]="showConfPw ? 'text' : 'password'"
+                  class="form-input"
+                  [(ngModel)]="fConfPw"
+                  placeholder="Re-enter new password">
+                <button class="pw-eye" type="button" (click)="togglePw('conf')">
+                  <svg *ngIf="!showConfPw" xmlns="http://www.w3.org/2000/svg"
+                    width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  <svg *ngIf="showConfPw" xmlns="http://www.w3.org/2000/svg"
+                    width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sec-actions">
+            <button class="btn btn-primary" (click)="savePassword()">
+              Update Password
+            </button>
+          </div>
+        </div>
+
+        <!-- ── SECTION 4: Session ── -->
+        <div class="pg-section danger-section">
+          <div class="sec-hd danger-hd">
+            <span class="sec-hd-title danger-title">Session</span>
+            <span class="sec-hd-icon">🚪</span>
+          </div>
+          <p class="danger-desc">
+            Sign out of your account on this device.
+          </p>
+          <div class="danger-btns">
+            <button class="btn btn-secondary" (click)="handleLogout()">
+              🚪 Logout
+            </button>
+          </div>
+        </div>
+
+      </div>
+      <!-- /profile-right -->
+
+    </div>
+    <!-- /profile-grid -->
+  </div>
+  <!-- /content -->
+
+</main>
+
+<!-- ══════ Restaurant Modal ══════ -->
+<div class="modal-backdrop"
+  [class.open]="restaurantModalOpen"
+  (click)="closeRestaurantModal()">
+
+  <div class="modal-box" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <span class="modal-title">
+        {{ hasRestaurantData() ? '✏️ Edit Restaurant' : '🍽️ Add Restaurant' }}
+      </span>
+      <button class="modal-close" (click)="closeRestaurantModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Restaurant Name <span class="required">*</span></label>
+          <input type="text" class="form-input"
+            [(ngModel)]="mRestaurant"
+            placeholder="e.g. Spice Garden">
+        </div>
+        <div class="form-group">
+          <label class="form-label">GST Number</label>
+          <input type="text" class="form-input"
+            [(ngModel)]="mGst"
+            placeholder="e.g. 22AAAAA0000A1Z5">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <textarea class="form-textarea"
+          [(ngModel)]="mAddress"
+          placeholder="Full restaurant address"
+          rows="3">
+        </textarea>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary"
+        (click)="closeRestaurantModal()"
+        [disabled]="isSavingRestaurant">
+        Cancel
+      </button>
+      <button class="btn btn-primary"
+        (click)="saveRestaurant()"
+        [disabled]="isSavingRestaurant">
+        <span *ngIf="!isSavingRestaurant">
+          {{ hasRestaurantData() ? 'Save Changes' : 'Add Restaurant' }}
+        </span>
+        <span *ngIf="isSavingRestaurant">Saving...</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast"
+  [class.show]="toastVisible"
+  [class.success]="toastType === 'success'"
+  [class.error]="toastType === 'error'"
+  [class.info]="toastType === 'info'">
+  {{ toastMsg }}
+</div>

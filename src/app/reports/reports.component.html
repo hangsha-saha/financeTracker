@@ -1,6 +1,5 @@
 <main class="main-content">
 
-  <!-- Header -->
   <header class="header">
     <div class="header-content">
       <h1>Reports</h1>
@@ -18,14 +17,14 @@
 
     <!-- ── Error ── -->
     <div class="error-state" *ngIf="apiError && !isLoading">
-      <div>⚠️ {{ apiError }}</div>
-      <button class="clear-btn" (click)="loadReportData()">Retry</button>
+      <span class="error-icon">⚠️</span>
+      <p>{{ apiError }}</p>
+      <button class="retry-btn" (click)="loadReportData()">🔄 Retry</button>
     </div>
 
-    <!-- ── Main content ── -->
     <ng-container *ngIf="!isLoading && !apiError">
 
-      <!-- Filters + Export -->
+      <!-- ── Filters + Export ── -->
       <div class="filters-section">
         <div class="filter-group">
           <label class="filter-label">Start Date</label>
@@ -38,42 +37,152 @@
             [(ngModel)]="endDate" (change)="applyFilter()">
         </div>
         <div class="export-buttons">
-          <button class="export-btn pdf-btn" (click)="exportPdf()">
-            📄 Export PDF
-          </button>
-          <button class="export-btn excel-btn" (click)="exportExcel()">
-            📊 Export Excel
-          </button>
+          <button class="export-btn pdf-btn"   (click)="exportPdf()">📄 Export PDF</button>
+          <button class="export-btn excel-btn" (click)="exportExcel()">📊 Export Excel</button>
         </div>
       </div>
 
-      <!-- Summary Cards -->
+      <!-- ── Summary Cards ── -->
       <div class="summary-cards">
-        <div class="summary-card" style="animation-delay:0.1s">
-          <div class="summary-label">Total Income</div>
-          <div class="summary-value income">{{ fmtINR(totalIncome) }}</div>
-          <div class="summary-sub">Filtered period</div>
-        </div>
-        <div class="summary-card" style="animation-delay:0.2s">
-          <div class="summary-label">Total Expense</div>
-          <div class="summary-value expense">{{ fmtINR(totalExpense) }}</div>
-          <div class="summary-sub">Filtered period</div>
-        </div>
-        <div class="summary-card" style="animation-delay:0.3s">
-          <div class="summary-label">Net Profit</div>
-          <div class="summary-value" [ngClass]="profitClass">
-            {{ netProfitDisplay }}
+
+        <div class="summary-card income-card">
+          <div class="summary-icon">📈</div>
+          <div>
+            <div class="summary-label">Range Income</div>
+            <div class="summary-value income">{{ fmtINR(totalIncome) }}</div>
+            <div class="summary-sub">Selected date range</div>
           </div>
-          <div class="summary-sub">Income minus expense</div>
+        </div>
+
+        <div class="summary-card expense-card">
+          <div class="summary-icon">📉</div>
+          <div>
+            <div class="summary-label">Range Expense</div>
+            <div class="summary-value expense">{{ fmtINR(totalExpense) }}</div>
+            <div class="summary-sub">Selected date range</div>
+          </div>
+        </div>
+
+        <div class="summary-card profit-card" [class.loss]="netProfit < 0">
+          <div class="summary-icon">{{ netProfit >= 0 ? '💰' : '🔻' }}</div>
+          <div>
+            <div class="summary-label">Net {{ netProfit >= 0 ? 'Profit' : 'Loss' }}</div>
+            <div class="summary-value" [ngClass]="profitClass">{{ netProfitDisplay }}</div>
+            <div class="summary-sub">Income minus expense</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── Period Overview Cards ── -->
+      <div class="period-overview">
+        <div class="period-title">Period Overview</div>
+        <div class="period-grid">
+
+          <div class="period-card">
+            <div class="period-label">📅 Today</div>
+            <div class="period-row">
+              <span class="period-key">Income</span>
+              <span class="period-val income">{{ fmtINR(todayIncome) }}</span>
+            </div>
+            <div class="period-row">
+              <span class="period-key">Expense</span>
+              <span class="period-val expense">{{ fmtINR(todayExpense) }}</span>
+            </div>
+            <div class="period-divider"></div>
+            <div class="period-row">
+              <span class="period-key">Net</span>
+              <span class="period-val"
+                [class.income]="todayIncome - todayExpense >= 0"
+                [class.expense]="todayIncome - todayExpense < 0">
+                {{ (todayIncome - todayExpense) < 0 ? '-' : '' }}{{ fmtINR(todayIncome - todayExpense) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="period-card">
+            <div class="period-label">🗓️ This Month</div>
+            <div class="period-row">
+              <span class="period-key">Income</span>
+              <span class="period-val income">{{ fmtINR(monthlyIncome) }}</span>
+            </div>
+            <div class="period-row">
+              <span class="period-key">Expense</span>
+              <span class="period-val expense">{{ fmtINR(monthlyExpense) }}</span>
+            </div>
+            <div class="period-divider"></div>
+            <div class="period-row">
+              <span class="period-key">Net</span>
+              <span class="period-val"
+                [class.income]="monthlyNetProfit >= 0"
+                [class.expense]="monthlyNetProfit < 0">
+                {{ monthlyNetProfit < 0 ? '-' : '' }}{{ fmtINR(monthlyNetProfit) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="period-card">
+            <div class="period-label">📆 This Year</div>
+            <div class="period-row">
+              <span class="period-key">Income</span>
+              <span class="period-val income">{{ fmtINR(yearlyIncome) }}</span>
+            </div>
+            <div class="period-row">
+              <span class="period-key">Expense</span>
+              <span class="period-val expense">{{ fmtINR(yearlyExpense) }}</span>
+            </div>
+            <div class="period-divider"></div>
+            <div class="period-row">
+              <span class="period-key">Net</span>
+              <span class="period-val"
+                [class.income]="yearlyIncome - yearlyExpense >= 0"
+                [class.expense]="yearlyIncome - yearlyExpense < 0">
+                {{ (yearlyIncome - yearlyExpense) < 0 ? '-' : '' }}{{ fmtINR(yearlyIncome - yearlyExpense) }}
+              </span>
+            </div>
+          </div>
+
+          <div class="period-card selected">
+            <div class="period-label">🔍 Selected Range</div>
+            <div class="period-row">
+              <span class="period-key">Income</span>
+              <span class="period-val income">{{ fmtINR(totalIncome) }}</span>
+            </div>
+            <div class="period-row">
+              <span class="period-key">Expense</span>
+              <span class="period-val expense">{{ fmtINR(totalExpense) }}</span>
+            </div>
+            <div class="period-divider"></div>
+            <div class="period-row">
+              <span class="period-key">Net</span>
+              <span class="period-val" [ngClass]="profitClass">{{ netProfitDisplay }}</span>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <!-- Charts -->
+      <!-- ── Charts ── -->
       <div class="charts-grid">
 
-        <!-- Bar: Income vs Expense -->
+        <!-- Chart period selector -->
+        <div class="chart-period-selector">
+          <span class="chart-period-label">📊 Chart View</span>
+          <div class="chart-period-btns">
+            <button
+              *ngFor="let p of chartPeriods"
+              class="chart-period-btn"
+              [class.active]="selectedChartPeriod === p.value"
+              (click)="selectedChartPeriod = p.value; onChartPeriodChange()">
+              {{ p.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Bar: Income vs Expense (API 2) -->
         <div class="chart-section full-width">
-          <div class="chart-title">📊 Monthly Income vs Expense</div>
+          <div class="chart-title">📊 Income vs Expense</div>
+          <div class="chart-subtitle">{{ getChartPeriodLabel() }}</div>
           <apx-chart
             #barChartRef
             [series]="barChartOptions.series!"
@@ -89,9 +198,10 @@
           </apx-chart>
         </div>
 
-        <!-- Donut: Expense Breakdown -->
-        <div class="chart-section">
+        <!-- Donut: Expense Breakdown (API 1) -->
+        <div class="chart-section" *ngIf="hasBreakdown()">
           <div class="chart-title">🍩 Expense Breakdown</div>
+          <div class="chart-subtitle">By category — selected range</div>
           <apx-chart
             #donutChartRef
             [series]="donutChartOptions.series!"
@@ -106,9 +216,52 @@
           </apx-chart>
         </div>
 
-        <!-- Area: Profit Trend -->
-        <div class="chart-section">
-          <div class="chart-title">📈 Profit Trend</div>
+        <!-- Breakdown table -->
+        <div class="chart-section" *ngIf="hasBreakdown()">
+          <div class="chart-title">📋 Category Details</div>
+          <div class="chart-subtitle">{{ expenseBreakdown.length }} categories</div>
+          <div class="breakdown-table-wrap">
+            <table class="breakdown-table">
+              <thead>
+                <tr><th>Category</th><th>Amount</th><th>Share</th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of expenseBreakdown">
+                  <td>{{ item.category }}</td>
+                  <td class="amt-cell">{{ fmtINR(item.amount) }}</td>
+                  <td>
+                    <div class="pct-row">
+                      <div class="pct-bar-bg">
+                        <div class="pct-bar-fill" [style.width.%]="breakdownPct(item.amount)"></div>
+                      </div>
+                      <span class="pct-text">{{ breakdownPct(item.amount) }}%</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Total</strong></td>
+                  <td class="amt-cell"><strong>{{ fmtINR(totalBreakdown) }}</strong></td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Empty breakdown -->
+        <div class="chart-section full-width" *ngIf="!hasBreakdown()">
+          <div class="empty-chart">
+            <span class="empty-icon">📊</span>
+            <p>No expense breakdown data for this period.</p>
+          </div>
+        </div>
+
+        <!-- Area: Profit/Loss Trend (API 2) -->
+        <div class="chart-section full-width">
+          <div class="chart-title">📈 Net Profit / Loss Trend</div>
+          <div class="chart-subtitle">Income · Expense · Net Profit across selected period</div>
           <apx-chart
             #areaChartRef
             [series]="areaChartOptions.series!"
@@ -128,8 +281,6 @@
       </div>
 
     </ng-container>
-    <!-- end main content -->
-
   </div>
 </main>
 

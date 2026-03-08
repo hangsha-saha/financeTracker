@@ -1,176 +1,139 @@
 <main class="main-content">
-
-  <!-- Header -->
   <header class="header">
     <div class="header-content">
       <h1>Generate Bill</h1>
       <p>Create and print customer bills</p>
     </div>
     <div class="header-actions">
-      <button class="header-action secondary" (click)="openPrintConfirm()">🖨️ Print</button>
-      <button class="header-action" (click)="saveBill()">💾 Save Bill</button>
+      <button class="header-action secondary" (click)="openPrintConfirm()">
+        🖨️ Print
+      </button>
+      <button class="header-action"
+        [disabled]="isSavingBill"
+        (click)="saveBill()">
+        <span *ngIf="!isSavingBill">💾 Save Bill</span>
+        <span *ngIf="isSavingBill">Saving...</span>
+      </button>
     </div>
   </header>
 
   <div class="content">
     <div class="bill-container">
 
-      <!-- ── Loading state ── -->
+      <!-- Loading -->
       <div class="loading-state" *ngIf="isLoadingMenu">
         <div class="spinner"></div>
         <span>Loading menu...</span>
       </div>
 
-      <!-- ── Error state ── -->
+      <!-- Error -->
       <div class="error-state" *ngIf="menuError && !isLoadingMenu">
         <div>⚠️ {{ menuError }}</div>
         <button class="btn btn-secondary" (click)="loadMenu()">Retry</button>
       </div>
 
-      <!-- ── Main content ── -->
       <ng-container *ngIf="!isLoadingMenu && !menuError">
-
-        <!-- ══════ FORM SECTION ══════ -->
         <div class="form-section">
-          <div class="form-title">Bill Details</div>
 
-          <!-- Bill Number -->
-          <div class="form-row specialRow">
-            <div class="form-group">
-              <label class="form-label">Bill Number</label>
-              <input type="text" class="form-input" [(ngModel)]="billNumber" readonly>
-            </div>
-          </div>
+          <!-- ── STEP 1: Customer Details ── -->
+          <div class="form-title">Step 1: Customer Details</div>
 
-          <!-- Customer Type -->
           <div class="form-group">
             <label class="form-label">Customer Type</label>
             <div class="category-toggle">
               <button type="button" class="category-btn"
                 [class.active-dine]="customerType === 'dine-in'"
-                (click)="setCustomerType('dine-in')">🍽️ Dine-In</button>
+                (click)="setCustomerType('dine-in')">
+                🍽️ Dine-In
+              </button>
               <button type="button" class="category-btn"
                 [class.active-walkin]="customerType === 'walk-in'"
-                (click)="setCustomerType('walk-in')">🚶 Walk-In</button>
+                (click)="setCustomerType('walk-in')">
+                🚶 Walk-In
+              </button>
               <button type="button" class="category-btn"
                 [class.active-takeaway]="customerType === 'takeaway'"
-                (click)="setCustomerType('takeaway')">📦 Takeaway</button>
+                (click)="setCustomerType('takeaway')">
+                📦 Takeaway
+              </button>
             </div>
           </div>
 
-          <!-- Table Number -->
-          <div class="form-group" *ngIf="customerType === 'dine-in'">
-            <label class="form-label">Table Number</label>
-            <input type="text" class="form-input" [(ngModel)]="tableNumber"
-              placeholder="e.g. Table 5, Counter 2" (input)="recalcTotals()">
-          </div>
-
-          <!-- Customer Info Row 1 -->
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Customer Name</label>
-              <input type="text" class="form-input" [(ngModel)]="customerName"
-                placeholder="Enter customer name" (input)="recalcTotals()">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Phone Number</label>
-              <input type="tel" class="form-input" [(ngModel)]="customerPhone"
+              <label class="form-label">Phone</label>
+              <input type="tel" class="form-input"
+                [(ngModel)]="customerPhone"
                 placeholder="+91 98765 43210">
             </div>
-          </div>
-
-          <!-- Customer Info Row 2 -->
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-input" [(ngModel)]="customerEmail"
-                placeholder="customer@email.com">
-            </div>
+            <!-- Payment Method -->
             <div class="form-group">
               <label class="form-label">Payment Method</label>
-              <select class="form-select" [(ngModel)]="paymentMethod"
-                (change)="recalcTotals()">
-                <option>CASH</option>
-                <option>UPI</option>
-                <option>CARD</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Voucher -->
-          <div class="form-group">
-            <label class="form-label">Voucher / Promo Code</label>
-            <div class="voucher-wrapper">
-              <div class="voucher-input-wrap">
-                <input type="text" class="form-input"
-                  [(ngModel)]="voucherCode"
-                  placeholder="Enter voucher code (e.g. SAVE10)"
-                  [disabled]="!!appliedVoucher || isLoadingVouchers"
-                  style="text-transform: uppercase;"
-                  (input)="voucherCode = voucherCode.toUpperCase()">
+              <div class="category-toggle">
+                <button type="button" class="category-btn"
+                  [class.active-dine]="paymentMethod === 'CASH'"
+                  (click)="paymentMethod = 'CASH'">
+                  💵 Cash
+                </button>
+                <button type="button" class="category-btn"
+                  [class.active-walkin]="paymentMethod === 'UPI'"
+                  (click)="paymentMethod = 'UPI'">
+                  📱 UPI
+                </button>
+                <button type="button" class="category-btn"
+                  [class.active-takeaway]="paymentMethod === 'CARD'"
+                  (click)="paymentMethod = 'CARD'">
+                  💳 Card
+                </button>
               </div>
-              <button type="button" class="voucher-apply-btn"
-                [class.applied]="!!appliedVoucher"
-                [disabled]="!!appliedVoucher || isLoadingVouchers"
-                (click)="applyVoucher()">
-                <span *ngIf="isLoadingVouchers">Loading...</span>
-                <span *ngIf="!isLoadingVouchers">
-                  {{ appliedVoucher ? 'Applied ✓' : 'Apply' }}
-                </span>
-              </button>
-              <button type="button" class="voucher-remove-btn"
-                *ngIf="appliedVoucher"
-                (click)="removeVoucher()">✕</button>
-            </div>
-            <div class="voucher-status" *ngIf="voucherStatus"
-              [class.success]="voucherStatusType === 'success'"
-              [class.error]="voucherStatusType === 'error'">
-              {{ voucherStatus }}
             </div>
           </div>
 
-          <!-- Notes -->
-          <div class="form-group">
-            <label class="form-label">Notes</label>
-            <textarea class="form-textarea" [(ngModel)]="notes"
-              placeholder="Add any special notes or instructions..."></textarea>
+          <!-- Generate Bill Button -->
+          <div style="margin: 20px 0; text-align: center;"
+            *ngIf="!isBillGenerated">
+            <button class="btn btn-primary"
+              style="width: 100%; padding: 15px;"
+              (click)="generateBill()">
+              ✨ Generate Bill Items
+            </button>
           </div>
 
-          <!-- Items -->
-          <div class="items-section">
-            <div class="form-title">Items</div>
+          <!-- ── STEP 2: Items ── -->
+          <div class="items-section" *ngIf="isBillGenerated">
+            <div class="form-title">Step 2: Add Items</div>
+
             <div class="items-list">
               <div class="item-row" *ngFor="let item of items">
 
-                <!-- Name search -->
+                <!-- Item Name Search -->
                 <div class="item-col name-col">
                   <label>Item Name</label>
                   <div class="item-search-wrapper">
                     <input type="text" class="item-search-input"
                       [(ngModel)]="item.searchText"
-                      placeholder="Type to search menu..."
-                      autocomplete="off"
                       (input)="onSearchInput(item)"
                       (focus)="onSearchFocus(item)"
                       (blur)="onSearchBlur(item)"
-                      (keydown)="onSearchKeydown($event, item)">
-                    <div class="dropdown-list" [class.open]="item.dropdownOpen">
-                      <div *ngIf="item.dropdownResults.length === 0"
-                        class="dropdown-no-results">
-                        No items found
-                      </div>
+                      placeholder="Search menu...">
+                    <div class="dropdown-list"
+                      [class.open]="item.dropdownOpen">
                       <div class="dropdown-item"
-                        *ngFor="let m of item.dropdownResults; let i = index"
-                        [class.highlighted]="i === item.highlightIdx"
+                        *ngFor="let m of item.dropdownResults"
                         (mousedown)="selectMenuItem(item, m)">
-                        <div>
-                          <span class="dropdown-item-name">{{ m.name }}</span>
-                          <span class="dropdown-item-category">{{ m.category }}</span>
-                        </div>
+                        <span>{{ m.name }}</span>
                         <span class="dropdown-item-price">₹{{ m.price }}</span>
+                      </div>
+                      <div class="dropdown-empty"
+                        *ngIf="item.dropdownResults.length === 0">
+                        No items found
                       </div>
                     </div>
                   </div>
+                  <span class="item-warn"
+                    *ngIf="item.searchText && !item.menuItemId">
+                    ⚠ Select from dropdown
+                  </span>
                 </div>
 
                 <!-- Qty -->
@@ -181,115 +144,192 @@
                     (input)="updateItemTotal(item)">
                 </div>
 
-                <!-- Price -->
+                <!-- Price (readonly) -->
                 <div class="item-col">
-                  <label>Price (₹)</label>
-                  <input type="number" class="item-input" min="0"
-                    [(ngModel)]="item.price" readonly
-                    (input)="updateItemTotal(item)">
-                </div>
-
-                <!-- Total -->
-                <div class="item-col">
-                  <label>Total (₹)</label>
+                  <label>Price</label>
                   <input type="number" class="item-input"
-                    [value]="item.total.toFixed(2)" readonly>
+                    [(ngModel)]="item.price" readonly>
                 </div>
 
-                <!-- Remove -->
-                <button type="button" class="remove-item-btn"
+                <!-- Total (readonly) -->
+                <div class="item-col">
+                  <label>Total</label>
+                  <input type="text" class="item-input"
+                    [value]="inr(item.total)" readonly>
+                </div>
+
+                <button class="remove-item-btn"
                   (click)="removeItem(item.id)">✕</button>
               </div>
             </div>
-            <button type="button" class="add-item-btn" (click)="addItem()">
+
+            <button class="add-item-btn" (click)="addItem()">
               + Add Item
             </button>
-          </div>
 
-          <!-- Totals form -->
-          <div class="totals-section">
-            <div class="form-row">
+            <!-- ── Totals ── -->
+            <div class="totals-section">
+
+              <!-- ── Voucher Dropdown ── -->
               <div class="form-group">
-                <label class="form-label">Subtotal (₹)</label>
-                <input type="number" class="form-input subtotal-input"
-                  [value]="subtotal.toFixed(2)" readonly>
+                <label class="form-label">Voucher</label>
+
+                <!-- No vouchers available -->
+                <div class="voucher-empty" *ngIf="activeVouchers.length === 0 && !appliedVoucher">
+                  <span>🏷️ No active vouchers available.</span>
+                  <small>Add vouchers from your Profile page.</small>
+                </div>
+
+                <!-- Voucher picker -->
+                <div class="voucher-picker" *ngIf="activeVouchers.length > 0 || appliedVoucher">
+                  <div class="voucher-select-wrapper">
+                    <button
+                      type="button"
+                      class="voucher-select-btn"
+                      [class.has-value]="!!appliedVoucher"
+                      (click)="toggleVoucherDropdown()"
+                      (blur)="closeVoucherDropdown()">
+                      <span class="voucher-select-label">
+                        <span *ngIf="!appliedVoucher">🏷️ Select a voucher...</span>
+                        <span *ngIf="appliedVoucher" class="voucher-selected-tag">
+                          <span class="voucher-tag-code">{{ appliedVoucher.code }}</span>
+                          <span class="voucher-tag-pct">{{ appliedVoucher.percentage }}% off</span>
+                        </span>
+                      </span>
+                      <span class="voucher-chevron"
+                        [class.open]="voucherDropdownOpen">▾</span>
+                    </button>
+
+                    <div class="voucher-dropdown" [class.open]="voucherDropdownOpen">
+                      <!-- None option -->
+                      <div class="voucher-option voucher-option-none"
+                        (mousedown)="selectVoucher(null)">
+                        <span>🚫 No Voucher</span>
+                      </div>
+                      <!-- Voucher list -->
+                      <div class="voucher-option"
+                        *ngFor="let v of activeVouchers"
+                        [class.selected]="appliedVoucher?.id === v.id"
+                        (mousedown)="selectVoucher(v)">
+                        <div class="voucher-opt-top">
+                          <span class="voucher-opt-code">{{ v.code }}</span>
+                          <span class="voucher-opt-pct">{{ v.percentage }}% off</span>
+                        </div>
+                        <div class="voucher-opt-meta">
+                          <span>Min ₹{{ v.minAmount }}</span>
+                          <span>Expires: {{ v.expireDate }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Remove button when applied -->
+                  <button class="voucher-remove-btn"
+                    *ngIf="appliedVoucher"
+                    (click)="removeVoucher()">
+                    ✕ Remove
+                  </button>
+                </div>
+
+                <!-- Status message -->
+                <div class="voucher-status"
+                  *ngIf="voucherStatus"
+                  [ngClass]="voucherStatusType">
+                  {{ voucherStatus }}
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Tax (%)</label>
-                <input type="number" class="form-input" [(ngModel)]="taxPct"
-                  min="0" max="100" (input)="recalcTotals()">
+
+              <!-- Tax + Discount -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Tax (%)</label>
+                  <input type="number" class="form-input"
+                    [(ngModel)]="taxPct"
+                    (input)="recalcTotals()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Discount (₹)</label>
+                  <input type="number" class="form-input"
+                    [(ngModel)]="discount"
+                    (input)="recalcTotals()">
+                </div>
               </div>
+
+              <!-- Subtotal / Tax / Voucher / Grand Total -->
+              <div class="totals-breakdown">
+                <div class="total-row">
+                  <span>Subtotal</span>
+                  <span>{{ inr(subtotal) }}</span>
+                </div>
+                <div class="total-row" *ngIf="taxAmt > 0">
+                  <span>Tax ({{ taxPct }}%)</span>
+                  <span>{{ inr(taxAmt) }}</span>
+                </div>
+                <div class="total-row" *ngIf="discount > 0">
+                  <span>Discount</span>
+                  <span>- {{ inr(discount) }}</span>
+                </div>
+                <div class="total-row voucher-row" *ngIf="appliedVoucher">
+                  <span>
+                    🏷️ Voucher
+                    <span class="voucher-inline-badge">{{ appliedVoucher.code }}</span>
+                    ({{ appliedVoucher.percentage }}%)
+                  </span>
+                  <span class="voucher-saving">- {{ inr(voucherAmt) }}</span>
+                </div>
+                <div class="total-row grand">
+                  <span>Grand Total</span>
+                  <span>{{ inr(total) }}</span>
+                </div>
+              </div>
+
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Discount (₹)</label>
-                <input type="number" class="form-input" [(ngModel)]="discount"
-                  min="0" (input)="recalcTotals()">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Total Amount (₹)</label>
-                <input type="number" class="form-input total-input"
-                  [value]="total.toFixed(2)" readonly>
-              </div>
-            </div>
           </div>
+          <!-- /items-section -->
 
-        </div><!-- /form-section -->
+        </div>
+        <!-- /form-section -->
 
-        <!-- ══════ PREVIEW SECTION ══════ -->
+        <!-- ── Live Receipt Preview ── -->
         <div class="preview-section">
-          <div class="form-title">Bill Preview</div>
-
+          <div class="form-title">Live Receipt</div>
           <div class="bill-preview" id="billPreview">
 
-            <!-- Restaurant header -->
             <div class="bill-header">
-              <div class="bill-restaurant-name">🏠 FinanceTracker Restaurant</div>
-              <div class="bill-address">
-                📍 123 Main Street, City Center<br>📞 +91 98765 43210
+              <div class="bill-restaurant-name">{{ restaurantName }}</div>
+              <div class="bill-address" *ngIf="restaurantAddress">
+                📍 {{ restaurantAddress }}
+              </div>
+              <div class="bill-gst" *ngIf="restaurantGst">
+                GST: {{ restaurantGst }}
               </div>
             </div>
 
-            <!-- Meta grid -->
             <div class="bill-meta">
               <div class="bill-meta-item">
-                <span class="bill-meta-label">BILL NO:</span>
-                <span class="bill-meta-value">{{ billNumber }}</span>
-              </div>
-              <div class="bill-meta-item">
                 <span class="bill-meta-label">DATE:</span>
-                <span class="bill-meta-value">{{ previewDate }}</span>
-              </div>
-              <div class="bill-meta-item">
-                <span class="bill-meta-label">CUSTOMER:</span>
-                <span class="bill-meta-value">{{ previewCustomerName }}</span>
-              </div>
-              <div class="bill-meta-item">
-                <span class="bill-meta-label">TIME:</span>
-                <span class="bill-meta-value">{{ previewTime }}</span>
+                {{ previewDate }}
               </div>
               <div class="bill-meta-item">
                 <span class="bill-meta-label">TYPE:</span>
-                <span class="bill-meta-value">
-                  <span class="preview-category-badge"
-                    [ngClass]="CAT_BADGE_CLASS[customerType]">
-                    {{ CAT_LABELS[customerType] }}
-                  </span>
-                </span>
+                {{ CAT_LABELS[customerType] }}
               </div>
-              <div class="bill-meta-item" *ngIf="customerType === 'dine-in'">
-                <span class="bill-meta-label">TABLE:</span>
-                <span class="bill-meta-value">{{ tableNumber || '—' }}</span>
+              <div class="bill-meta-item">
+                <span class="bill-meta-label">PAYMENT:</span>
+                {{ paymentMethod }}
+              </div>
+              <div class="bill-meta-item" *ngIf="customerPhone">
+                <span class="bill-meta-label">PHONE:</span>
+                {{ customerPhone }}
               </div>
             </div>
 
-            <!-- Items table -->
             <div class="bill-items">
               <div class="bill-item-header">
                 <span>ITEM</span>
                 <span>QTY</span>
                 <span>PRICE</span>
-                <span>AMOUNT</span>
+                <span>AMT</span>
               </div>
               <div class="bill-item" *ngFor="let item of filledItems">
                 <span>{{ item.name }}</span>
@@ -297,29 +337,28 @@
                 <span>{{ inr(item.price) }}</span>
                 <span>{{ inr(item.total) }}</span>
               </div>
-              <div class="bill-no-items" *ngIf="filledItems.length === 0">
+              <div class="bill-no-items"
+                *ngIf="filledItems.length === 0">
                 No items added yet
               </div>
             </div>
 
-            <!-- Totals -->
             <div class="bill-totals">
               <div class="bill-total-row">
                 <span>Subtotal:</span>
                 <span>{{ inr(subtotal) }}</span>
               </div>
-              <div class="bill-total-row">
-                <span>Tax ({{ taxPct }}%):</span>
+              <div class="bill-total-row" *ngIf="taxAmt > 0">
+                <span>Tax:</span>
                 <span>{{ inr(taxAmt) }}</span>
               </div>
-              <div class="bill-total-row">
-                <span>Discount:</span>
-                <span>{{ inr(discount) }}</span>
-              </div>
-              <div class="bill-total-row voucher-row"
-                *ngIf="appliedVoucher && voucherAmt > 0">
+              <div class="bill-total-row" *ngIf="appliedVoucher">
                 <span>Voucher ({{ appliedVoucher.code }}):</span>
                 <span>-{{ inr(voucherAmt) }}</span>
+              </div>
+              <div class="bill-total-row" *ngIf="discount > 0">
+                <span>Discount:</span>
+                <span>-{{ inr(discount) }}</span>
               </div>
               <div class="bill-total-row final">
                 <span>TOTAL:</span>
@@ -327,49 +366,46 @@
               </div>
             </div>
 
-            <!-- Footer -->
-            <div class="bill-footer">
-              Thank you for your order!<br>
-              Payment Method: <strong>{{ paymentMethod }}</strong><br>
-              ═════════════════════════
-            </div>
-
           </div>
-        </div><!-- /preview-section -->
+        </div>
 
       </ng-container>
-      <!-- end main content -->
-
     </div>
   </div>
 </main>
 
-<!-- ══════ PRINT CONFIRM MODAL ══════ -->
+<!-- ══════ Print Confirm ══════ -->
 <div class="confirm-overlay" [class.active]="showPrintConfirm">
   <div class="confirm-box">
     <div class="confirm-icon">🖨️</div>
-    <div class="confirm-title">Print Bill?</div>
+    <div class="confirm-title">Confirm Print?</div>
     <div class="confirm-details">
       <div class="confirm-detail-row">
-        <span>Bill No:</span>
-        <strong>{{ billNumber }}</strong>
-      </div>
-      <div class="confirm-detail-row">
-        <span>Customer:</span>
-        <strong>{{ previewCustomerName }}</strong>
-      </div>
-      <div class="confirm-detail-row">
-        <span>Type:</span>
-        <strong>{{ CAT_LABELS[customerType] }}</strong>
-      </div>
-      <div class="confirm-detail-row">
         <span>Total:</span>
-        <strong style="color:var(--primary)">{{ inr(total) }}</strong>
+        <strong>{{ inr(total) }}</strong>
+      </div>
+      <div class="confirm-detail-row">
+        <span>Items:</span>
+        <strong>{{ filledItems.length }}</strong>
       </div>
     </div>
     <div class="confirm-btns">
-      <button class="btn btn-secondary" (click)="closePrintConfirm()">Cancel</button>
-      <button class="btn btn-primary" (click)="doPrint()">🖨️ Yes, Print</button>
+      <button class="btn btn-secondary"
+        (click)="closePrintConfirm()">Cancel</button>
+      <button class="btn btn-primary"
+        (click)="doPrint()">Yes, Print</button>
     </div>
   </div>
+</div>
+
+<!-- ══════ Toast ══════ -->
+<div class="toast"
+  [class.show]="toastVisible"
+  [class.success]="toastType === 'success'"
+  [class.danger]="toastType === 'danger'"
+  [class.info]="toastType === 'info'">
+  <span *ngIf="toastType === 'success'">✅</span>
+  <span *ngIf="toastType === 'danger'">❌</span>
+  <span *ngIf="toastType === 'info'">ℹ️</span>
+  {{ toastMsg }}
 </div>

@@ -21,8 +21,7 @@
           <div class="stat-label">Showing</div>
         </div>
       </div>
-      <button class="export-btn" (click)="exportAllExcel()"
-        title="Export all filtered bills to Excel">
+      <button class="export-btn" (click)="exportAllExcel()" title="Export all filtered bills to Excel">
         📊 Export Excel
       </button>
     </div>
@@ -30,25 +29,26 @@
 
   <div class="content">
 
-    <!-- ── Loading ── -->
+    <!-- Loading State -->
     <div class="loading-state" *ngIf="isLoading">
       <div class="spinner"></div>
-      <span>Loading bills...</span>
+      <p>Loading bills...</p>
     </div>
 
-    <!-- ── Error ── -->
-    <div class="error-state" *ngIf="apiError && !isLoading">
-      <div>⚠️ {{ apiError }}</div>
-      <button class="clear-btn" (click)="loadBills()">Retry</button>
+    <!-- Error State -->
+    <div class="error-state" *ngIf="hasError && !isLoading">
+      <span class="error-icon">⚠️</span>
+      <p>{{ errorMsg }}</p>
+      <button class="retry-btn" (click)="retryFetch()">🔄 Retry</button>
     </div>
 
-    <!-- ── Main content ── -->
-    <ng-container *ngIf="!isLoading && !apiError">
+    <!-- Content (only show when loaded) -->
+    <ng-container *ngIf="!isLoading && !hasError">
 
       <!-- Filters -->
       <div class="filters-section">
         <input type="text" class="filter-input search-input"
-          placeholder="Search by bill number or customer..."
+          placeholder="Search by bill no, phone, type or voucher..."
           [(ngModel)]="searchText" (input)="applyFilters()">
 
         <input type="date" class="filter-input"
@@ -74,16 +74,24 @@
         <div class="bill-card"
           *ngFor="let b of pagedBills; let i = index"
           [style.animation-delay]="(i * 0.05) + 's'"
+          [class.has-voucher]="!!b.voucherCode"
           (click)="openModal(b)">
 
           <div class="bill-card-header">
             <div>
               <div class="bill-number">{{ b.id }}</div>
-              <div class="bill-customer">👤 {{ b.customer }}</div>
+              <div class="bill-customer">📱 {{ b.customer }}</div>
+              <div class="bill-customer-type">🪑 {{ b.customerType }}</div>
             </div>
-            <span class="payment-badge" [ngClass]="paymentClass(b.payment)">
-              {{ b.payment }}
-            </span>
+            <div class="bill-card-header-right">
+              <span class="payment-badge" [ngClass]="paymentClass(b.payment)">
+                {{ b.payment }}
+              </span>
+              <!-- Voucher badge on the card -->
+              <span class="voucher-badge" *ngIf="b.voucherCode">
+                🏷️ {{ b.voucherCode }}
+              </span>
+            </div>
           </div>
 
           <div class="bill-details">
@@ -93,18 +101,41 @@
             </div>
             <div class="detail-row">
               <span class="detail-label">Items</span>
-              <span class="detail-value">
-                {{ b.items.length }} item{{ b.items.length !== 1 ? 's' : '' }}
+              <span class="detail-value">{{ b.items.length }} item{{ b.items.length !== 1 ? 's' : '' }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Subtotal</span>
+              <span class="detail-value">{{ fmtInr(b.subtotal) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Tax</span>
+              <span class="detail-value">{{ fmtInr(b.taxAmt) }}</span>
+            </div>
+            <!-- Voucher discount row -->
+            <div class="detail-row voucher-detail-row" *ngIf="b.voucherAmt > 0">
+              <span class="detail-label">
+                <span class="voucher-detail-code">{{ b.voucherCode }}</span>
+                <span class="voucher-detail-pct">({{ b.voucherPct }}%)</span>
+              </span>
+              <span class="detail-value saving-value">
+                -{{ fmtInr(b.voucherAmt) }}
               </span>
             </div>
+            <!-- Flat discount row -->
             <div class="detail-row" *ngIf="b.discount > 0">
               <span class="detail-label">Discount</span>
-              <span class="detail-value discount">-{{ fmtInr(b.discount) }}</span>
+              <span class="detail-value saving-value">-{{ fmtInr(b.discount) }}</span>
             </div>
           </div>
 
+          <!-- Savings strip (only when there's a voucher) -->
+          <div class="savings-strip" *ngIf="calcSavings(b) > 0">
+            <span class="savings-label">🎉 You saved</span>
+            <span class="savings-value">{{ fmtInr(calcSavings(b)) }}</span>
+          </div>
+
           <div class="bill-amount">
-            <span class="amount-label">Total Amount</span>
+            <span class="amount-label">Net Amount</span>
             <span class="amount-value">{{ fmtInr(calcTotal(b)) }}</span>
           </div>
 
@@ -127,7 +158,7 @@
       </div>
 
       <!-- Empty state -->
-      <div class="no-results" *ngIf="pagedBills.length === 0">
+      <div class="no-results" *ngIf="pagedBills.length === 0 && !isLoading">
         <span class="no-icon">🔍</span>
         <div>No bills match your filters.</div>
         <button class="clear-btn" (click)="clearFilters()">Clear Filters</button>
@@ -140,19 +171,16 @@
           of {{ filtered.length }} bill{{ filtered.length !== 1 ? 's' : '' }}
         </span>
         <div class="pagination-controls">
-          <button class="pagination-btn"
-            [disabled]="page === 1" (click)="prevPage()">←</button>
+          <button class="pagination-btn" [disabled]="page === 1" (click)="prevPage()">←</button>
           <button class="pagination-btn"
             *ngFor="let p of pageNumbers"
             [class.active]="p === page"
             (click)="goToPage(p)">{{ p }}</button>
-          <button class="pagination-btn"
-            [disabled]="page === totalPages" (click)="nextPage()">→</button>
+          <button class="pagination-btn" [disabled]="page === totalPages" (click)="nextPage()">→</button>
         </div>
       </div>
 
     </ng-container>
-    <!-- end main content -->
 
   </div>
 </main>
@@ -166,6 +194,9 @@
         <h2 class="modal-title">{{ selectedBill.id }}</h2>
         <p class="modal-subtitle">
           {{ fmtDate(selectedBill.date) }} · {{ selectedBill.payment }}
+          <span class="modal-voucher-inline" *ngIf="selectedBill.voucherCode">
+            · 🏷️ {{ selectedBill.voucherCode }}
+          </span>
         </p>
       </div>
       <button class="modal-close" (click)="closeModal()">✕</button>
@@ -173,8 +204,12 @@
 
     <div class="modal-meta">
       <div class="meta-item">
-        <span class="meta-label">Customer</span>
+        <span class="meta-label">Phone No.</span>
         <span class="meta-value">{{ selectedBill.customer }}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Customer Type</span>
+        <span class="meta-value">{{ selectedBill.customerType }}</span>
       </div>
       <div class="meta-item">
         <span class="meta-label">Date</span>
@@ -192,6 +227,23 @@
         <span class="meta-label">Items</span>
         <span class="meta-value">{{ selectedBill.items.length }}</span>
       </div>
+      <!-- Voucher meta row -->
+      <div class="meta-item" *ngIf="selectedBill.voucherCode">
+        <span class="meta-label">Voucher Applied</span>
+        <span class="meta-value">
+          <span class="modal-voucher-chip">
+            🏷️ {{ selectedBill.voucherCode }}
+            <span class="modal-voucher-chip-pct">{{ selectedBill.voucherPct }}% off</span>
+          </span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Savings banner (inside modal) -->
+    <div class="modal-savings-banner" *ngIf="calcSavings(selectedBill) > 0">
+      <span>🎉 Customer saved</span>
+      <strong>{{ fmtInr(calcSavings(selectedBill)) }}</strong>
+      <span>on this order</span>
     </div>
 
     <!-- Items table -->
@@ -215,27 +267,39 @@
         <span>{{ fmtInr(selectedBill.subtotal) }}</span>
       </div>
       <div class="total-row">
-        <span>Tax ({{ selectedBill.tax }}%)</span>
+        <span>Tax</span>
         <span>{{ fmtInr(calcTax(selectedBill)) }}</span>
       </div>
+
+      <!-- Voucher discount -->
+      <div class="total-row voucher-total-row" *ngIf="selectedBill.voucherAmt > 0">
+        <span>
+          <span class="voucher-total-icon">🏷️</span>
+          Voucher
+          <span class="voucher-total-code">{{ selectedBill.voucherCode }}</span>
+          <span class="voucher-total-pct">({{ selectedBill.voucherPct }}%)</span>
+        </span>
+        <span class="voucher-total-saving">-{{ fmtInr(selectedBill.voucherAmt) }}</span>
+      </div>
+
+      <!-- Flat discount -->
       <div class="total-row" *ngIf="selectedBill.discount > 0">
         <span>Discount</span>
         <span class="discount">-{{ fmtInr(selectedBill.discount) }}</span>
       </div>
+
       <div class="total-row final">
-        <span>TOTAL</span>
+        <span>NET TOTAL</span>
         <span>{{ fmtInr(calcTotal(selectedBill)) }}</span>
       </div>
     </div>
 
     <!-- Modal download buttons -->
     <div class="modal-actions">
-      <button class="modal-action-btn pdf"
-        (click)="downloadPdf(selectedBill)">
+      <button class="modal-action-btn pdf" (click)="downloadPdf(selectedBill)">
         📄 Download PDF
       </button>
-      <button class="modal-action-btn excel"
-        (click)="downloadExcel(selectedBill)">
+      <button class="modal-action-btn excel" (click)="downloadExcel(selectedBill)">
         📊 Download Excel
       </button>
     </div>

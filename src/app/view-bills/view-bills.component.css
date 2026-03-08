@@ -91,12 +91,17 @@
   box-shadow: var(--shadow-md); transform: translateY(-4px);
   border-color: var(--primary);
 }
+/* Subtle tint for voucher bills */
+.bill-card.has-voucher {
+  border-left: 3px solid #2e7d32;
+}
 
 @keyframes slideInUp {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Card header ── */
 .bill-card-header {
   display: flex; justify-content: space-between; align-items: flex-start;
   margin-bottom: var(--spacing-md); padding-bottom: var(--spacing-md);
@@ -104,8 +109,16 @@
 }
 .bill-number   { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .bill-customer { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.bill-customer-type { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
-/* Payment badges */
+.bill-card-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* ── Payment badges ── */
 .payment-badge {
   display: inline-block; padding: 4px 10px; border-radius: 20px;
   font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
@@ -114,15 +127,73 @@
 .pay-upi   { background: rgba(33,150,243,0.12); color: #1565C0; }
 .pay-card  { background: rgba(156,39,176,0.12); color: #6A1B9A; }
 
+/* ── Voucher badge on card ── */
+.voucher-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: rgba(46,125,50,0.1);
+  color: #2e7d32;
+  border: 1px solid rgba(46,125,50,0.2);
+}
+
+/* ── Bill detail rows ── */
 .bill-details { margin-bottom: var(--spacing-md); }
 .detail-row {
   display: flex; justify-content: space-between;
   margin-bottom: var(--spacing-sm); font-size: 13px;
 }
-.detail-label { color: var(--text-secondary); }
+.detail-label { color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
 .detail-value { font-weight: 600; color: var(--text-primary); }
-.detail-value.discount { color: var(--success); }
 
+/* ── Voucher detail row on card ── */
+.voucher-detail-row .detail-label {
+  color: #2e7d32;
+  font-weight: 600;
+}
+.voucher-detail-code {
+  font-weight: 700;
+  font-size: 11px;
+  background: rgba(46,125,50,0.1);
+  color: #2e7d32;
+  padding: 1px 7px;
+  border-radius: 12px;
+  margin-right: 2px;
+}
+.voucher-detail-pct {
+  font-size: 11px;
+  color: #4caf50;
+}
+.saving-value {
+  color: #2e7d32 !important;
+  font-weight: 700 !important;
+}
+
+/* ── Savings strip ── */
+.savings-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  background: linear-gradient(90deg, rgba(46,125,50,0.08), rgba(46,125,50,0.04));
+  border: 1px dashed rgba(46,125,50,0.3);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-sm);
+  font-size: 12px;
+}
+.savings-label { color: #2e7d32; font-weight: 600; }
+.savings-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: #2e7d32;
+}
+
+/* ── Net amount box ── */
 .bill-amount {
   display: flex; justify-content: space-between; align-items: center;
   padding: var(--spacing-md); background: rgba(255,140,0,0.06);
@@ -132,7 +203,7 @@
 .amount-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
 .amount-value { font-size: 20px; font-weight: 700; color: var(--primary); }
 
-/* Card action buttons */
+/* ── Card action buttons ── */
 .bill-actions { display: flex; gap: 6px; }
 .action-btn {
   flex: 1; padding: 8px 10px; border: 1px solid var(--border-color);
@@ -195,6 +266,10 @@
 }
 .modal-title    { font-size: 20px; font-weight: 700; }
 .modal-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.modal-voucher-inline {
+  color: #2e7d32;
+  font-weight: 600;
+}
 .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-tertiary); transition: all 0.2s; }
 .modal-close:hover { color: var(--text-primary); transform: scale(1.1); }
 
@@ -206,6 +281,46 @@
 .meta-item  { display: flex; flex-direction: column; gap: 4px; }
 .meta-label { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; }
 .meta-value { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+
+/* ── Voucher chip in modal meta ── */
+.modal-voucher-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(46,125,50,0.08);
+  border: 1px solid rgba(46,125,50,0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #2e7d32;
+}
+.modal-voucher-chip-pct {
+  font-size: 11px;
+  font-weight: 600;
+  background: #2e7d32;
+  color: white;
+  padding: 1px 7px;
+  border-radius: 12px;
+}
+
+/* ── Savings banner inside modal ── */
+.modal-savings-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 var(--spacing-xl);
+  padding: 10px 16px;
+  background: linear-gradient(90deg, rgba(46,125,50,0.08), rgba(46,125,50,0.04));
+  border: 1px dashed rgba(46,125,50,0.35);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: #2e7d32;
+}
+.modal-savings-banner strong {
+  font-size: 15px;
+  font-weight: 800;
+}
 
 .modal-section-title {
   padding: var(--spacing-md) var(--spacing-xl) var(--spacing-sm);
@@ -242,6 +357,35 @@
   margin-top: var(--spacing-sm);
 }
 
+/* ── Voucher total row in modal ── */
+.voucher-total-row {
+  color: #2e7d32 !important;
+  background: rgba(46,125,50,0.04);
+  border-radius: 4px;
+  padding: 6px 6px !important;
+  margin: 2px 0;
+}
+.voucher-total-row span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.voucher-total-icon  { font-size: 13px; }
+.voucher-total-code  {
+  font-weight: 700;
+  font-size: 12px;
+  background: rgba(46,125,50,0.12);
+  padding: 1px 8px;
+  border-radius: 12px;
+  color: #2e7d32;
+}
+.voucher-total-pct   { font-size: 11px; color: #4caf50; }
+.voucher-total-saving {
+  font-weight: 800;
+  color: #2e7d32;
+  font-size: 13px;
+}
+
 .modal-actions {
   display: flex; gap: var(--spacing-md);
   padding: var(--spacing-lg) var(--spacing-xl);
@@ -256,6 +400,27 @@
 .modal-action-btn.pdf:hover   { background: var(--danger); color: white; }
 .modal-action-btn.excel { background: rgba(76,175,80,0.1); color: #2E7D32; border: 1px solid rgba(76,175,80,0.3); }
 .modal-action-btn.excel:hover { background: var(--success); color: white; }
+
+/* ══ Loading / Error ══ */
+.loading-state, .error-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: var(--spacing-md);
+  padding: var(--spacing-xl); text-align: center;
+}
+.error-icon { font-size: 40px; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.retry-btn {
+  padding: 10px 20px; background: var(--primary); color: white;
+  border: none; border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 13px; font-weight: 700; font-family: inherit;
+}
 
 /* ══ Toast ══ */
 .toast {
@@ -282,21 +447,4 @@
   .modal-meta { grid-template-columns: 1fr; }
   .modal-actions { flex-direction: column; }
   .pagination { flex-direction: column; gap: var(--spacing-md); }
-}
-.loading-state {
-  display: flex; align-items: center; justify-content: center;
-  gap: 12px; padding: 48px; color: var(--text-secondary); font-size: 14px;
-}
-.spinner {
-  width: 24px; height: 24px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.error-state {
-  text-align: center; padding: 48px; color: var(--danger);
-  font-size: 14px; display: flex; flex-direction: column;
-  align-items: center; gap: 16px;
 }

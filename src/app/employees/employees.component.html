@@ -325,59 +325,86 @@
 
     <div class="modal-body">
 
-      <!-- Salary banner -->
-      <div class="salary-amount-banner">
-        <span class="sab-label">Monthly Salary</span>
-        <span class="sab-value">
-          ₹{{ salaryAmount?.toLocaleString('en-IN') }}
-        </span>
+      <!-- ── Checking spinner ── -->
+      <div class="salary-check-loading" *ngIf="isCheckingSalary">
+        <div class="spinner-sm"></div>
+        <span>Checking payment history...</span>
       </div>
 
-      <!-- Row: Amount + Paid On -->
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Salary Amount (₹) *</label>
-          <input type="number" class="form-input"
-            [class.input-error]="errSalaryAmount"
-            placeholder="Enter amount" min="0"
-            [(ngModel)]="salaryAmount">
-          <span class="form-error" *ngIf="errSalaryAmount">
-            Valid amount required
-          </span>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Payment Date *</label>
-          <input type="date" class="form-input"
-            [class.input-error]="errSalaryPaidOn"
-            [(ngModel)]="salaryPaidOn">
-          <span class="form-error" *ngIf="errSalaryPaidOn">
-            Date is required
-          </span>
+      <!-- ── Already paid warning ── -->
+      <div class="salary-already-paid" *ngIf="!isCheckingSalary && salaryAlreadyPaid">
+        <div class="sap-icon">⚠️</div>
+        <div class="sap-content">
+          <div class="sap-title">Salary Already Paid This Month</div>
+          <div class="sap-detail" *ngIf="salaryPaidRecord">
+            ₹{{ salaryPaidRecord.salary.toLocaleString('en-IN') }} was paid
+            on {{ fmtDate(salaryPaidRecord.paymentDate) }}
+            via {{ salaryPaidRecord.paymentMode }}.
+          </div>
         </div>
       </div>
 
-      <!-- Payment Mode -->
-      <div class="form-group">
-        <label class="form-label">Payment Mode *</label>
-        <select class="form-select"
-          [class.input-error]="errSalaryPayMode"
-          [(ngModel)]="salaryPayMode">
-          <option value="">Select Mode</option>
-          <option *ngFor="let m of PAY_MODES" [value]="m">{{ m }}</option>
-        </select>
-        <span class="form-error" *ngIf="errSalaryPayMode">
-          Payment mode required
-        </span>
-      </div>
+      <!-- ── Payment form — hidden if already paid ── -->
+      <ng-container *ngIf="!isCheckingSalary && !salaryAlreadyPaid">
+
+        <!-- Salary banner -->
+        <div class="salary-amount-banner">
+          <span class="sab-label">Monthly Salary</span>
+          <span class="sab-value">
+            ₹{{ salaryAmount?.toLocaleString('en-IN') }}
+          </span>
+        </div>
+
+        <!-- Row: Amount + Paid On -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Salary Amount (₹) *</label>
+            <input type="number" class="form-input"
+              [class.input-error]="errSalaryAmount"
+              placeholder="Enter amount" min="0"
+              [(ngModel)]="salaryAmount">
+            <span class="form-error" *ngIf="errSalaryAmount">
+              Valid amount required
+            </span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Date *</label>
+            <input type="date" class="form-input"
+              [class.input-error]="errSalaryPaidOn"
+              [(ngModel)]="salaryPaidOn">
+            <span class="form-error" *ngIf="errSalaryPaidOn">
+              Date is required
+            </span>
+          </div>
+        </div>
+
+        <!-- Payment Mode -->
+        <div class="form-group">
+          <label class="form-label">Payment Mode *</label>
+          <select class="form-select"
+            [class.input-error]="errSalaryPayMode"
+            [(ngModel)]="salaryPayMode">
+            <option value="">Select Mode</option>
+            <option *ngFor="let m of PAY_MODES" [value]="m">{{ m }}</option>
+          </select>
+          <span class="form-error" *ngIf="errSalaryPayMode">
+            Payment mode required
+          </span>
+        </div>
+
+      </ng-container>
 
     </div>
 
     <div class="modal-footer">
       <div class="modal-footer-right">
         <button class="btn btn-secondary"
-          [disabled]="isSavingSalary"
-          (click)="closeSalaryModal()">Cancel</button>
+          [disabled]="isSavingSalary || isCheckingSalary"
+          (click)="closeSalaryModal()">Close</button>
+
+        <!-- Show pay button only if not already paid and not checking -->
         <button class="btn btn-salary"
+          *ngIf="!salaryAlreadyPaid && !isCheckingSalary"
           [disabled]="isSavingSalary"
           (click)="saveSalary()">
           <span *ngIf="!isSavingSalary">💰 Confirm Payment</span>
@@ -388,7 +415,6 @@
 
   </div>
 </div>
-
 <!-- ══════ TOAST ══════ -->
 <div class="toast"
   [class.show]="toastVisible"

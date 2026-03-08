@@ -1,0 +1,256 @@
+<main class="main-content">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <h1>View Bills</h1>
+      <p>Manage and track all customer bills</p>
+    </div>
+    <div class="header-right">
+      <div class="header-stats">
+        <div class="stat-card">
+          <div class="stat-value">{{ statTotal }}</div>
+          <div class="stat-label">Total Bills</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ statRevenue }}</div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ statShowing }}</div>
+          <div class="stat-label">Showing</div>
+        </div>
+      </div>
+      <button class="export-btn" (click)="exportAllExcel()"
+        title="Export all filtered bills to Excel">
+        📊 Export Excel
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ── Loading ── -->
+    <div class="loading-state" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <span>Loading bills...</span>
+    </div>
+
+    <!-- ── Error ── -->
+    <div class="error-state" *ngIf="apiError && !isLoading">
+      <div>⚠️ {{ apiError }}</div>
+      <button class="clear-btn" (click)="loadBills()">Retry</button>
+    </div>
+
+    <!-- ── Main content ── -->
+    <ng-container *ngIf="!isLoading && !apiError">
+
+      <!-- Filters -->
+      <div class="filters-section">
+        <input type="text" class="filter-input search-input"
+          placeholder="Search by bill number or customer..."
+          [(ngModel)]="searchText" (input)="applyFilters()">
+
+        <input type="date" class="filter-input"
+          [(ngModel)]="filterDate" (change)="applyFilters()">
+
+        <select class="filter-select"
+          [(ngModel)]="filterPayment" (change)="applyFilters()">
+          <option value="">All Payment Methods</option>
+          <option value="CASH">Cash</option>
+          <option value="UPI">UPI</option>
+          <option value="CARD">Card</option>
+        </select>
+
+        <button class="clear-btn"
+          *ngIf="searchText || filterDate || filterPayment"
+          (click)="clearFilters()">
+          ✕ Clear
+        </button>
+      </div>
+
+      <!-- Bills Grid -->
+      <div class="bills-grid" *ngIf="pagedBills.length > 0">
+        <div class="bill-card"
+          *ngFor="let b of pagedBills; let i = index"
+          [style.animation-delay]="(i * 0.05) + 's'"
+          (click)="openModal(b)">
+
+          <div class="bill-card-header">
+            <div>
+              <div class="bill-number">{{ b.id }}</div>
+              <div class="bill-customer">👤 {{ b.customer }}</div>
+            </div>
+            <span class="payment-badge" [ngClass]="paymentClass(b.payment)">
+              {{ b.payment }}
+            </span>
+          </div>
+
+          <div class="bill-details">
+            <div class="detail-row">
+              <span class="detail-label">Date</span>
+              <span class="detail-value">{{ fmtDate(b.date) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Items</span>
+              <span class="detail-value">
+                {{ b.items.length }} item{{ b.items.length !== 1 ? 's' : '' }}
+              </span>
+            </div>
+            <div class="detail-row" *ngIf="b.discount > 0">
+              <span class="detail-label">Discount</span>
+              <span class="detail-value discount">-{{ fmtInr(b.discount) }}</span>
+            </div>
+          </div>
+
+          <div class="bill-amount">
+            <span class="amount-label">Total Amount</span>
+            <span class="amount-value">{{ fmtInr(calcTotal(b)) }}</span>
+          </div>
+
+          <div class="bill-actions">
+            <button class="action-btn"
+              (click)="openModal(b); $event.stopPropagation()">
+              👁 View
+            </button>
+            <button class="action-btn pdf"
+              (click)="downloadPdf(b, $event)">
+              📄 PDF
+            </button>
+            <button class="action-btn excel"
+              (click)="downloadExcel(b, $event)">
+              📊 Excel
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="no-results" *ngIf="pagedBills.length === 0">
+        <span class="no-icon">🔍</span>
+        <div>No bills match your filters.</div>
+        <button class="clear-btn" (click)="clearFilters()">Clear Filters</button>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" *ngIf="filtered.length > 0">
+        <span class="pagination-info">
+          Showing {{ (page - 1) * PAGE_SIZE + 1 }}–{{ Math.min(page * PAGE_SIZE, filtered.length) }}
+          of {{ filtered.length }} bill{{ filtered.length !== 1 ? 's' : '' }}
+        </span>
+        <div class="pagination-controls">
+          <button class="pagination-btn"
+            [disabled]="page === 1" (click)="prevPage()">←</button>
+          <button class="pagination-btn"
+            *ngFor="let p of pageNumbers"
+            [class.active]="p === page"
+            (click)="goToPage(p)">{{ p }}</button>
+          <button class="pagination-btn"
+            [disabled]="page === totalPages" (click)="nextPage()">→</button>
+        </div>
+      </div>
+
+    </ng-container>
+    <!-- end main content -->
+
+  </div>
+</main>
+
+<!-- ══════ BILL DETAIL MODAL ══════ -->
+<div class="modal-overlay" [class.active]="showModal" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()" *ngIf="selectedBill">
+
+    <div class="modal-header">
+      <div>
+        <h2 class="modal-title">{{ selectedBill.id }}</h2>
+        <p class="modal-subtitle">
+          {{ fmtDate(selectedBill.date) }} · {{ selectedBill.payment }}
+        </p>
+      </div>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+
+    <div class="modal-meta">
+      <div class="meta-item">
+        <span class="meta-label">Customer</span>
+        <span class="meta-value">{{ selectedBill.customer }}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Date</span>
+        <span class="meta-value">{{ fmtDate(selectedBill.date) }}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Payment</span>
+        <span class="meta-value">
+          <span class="payment-badge" [ngClass]="paymentClass(selectedBill.payment)">
+            {{ selectedBill.payment }}
+          </span>
+        </span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Items</span>
+        <span class="meta-value">{{ selectedBill.items.length }}</span>
+      </div>
+    </div>
+
+    <!-- Items table -->
+    <div class="modal-section-title">Order Items</div>
+    <div class="modal-items-table">
+      <div class="items-header">
+        <span>Item</span><span>Qty</span><span>Price</span><span>Total</span>
+      </div>
+      <div class="items-row" *ngFor="let item of selectedBill.items">
+        <span>{{ item.name }}</span>
+        <span>{{ item.qty }}</span>
+        <span>{{ fmtInr(item.price) }}</span>
+        <span>{{ fmtInr(item.total) }}</span>
+      </div>
+    </div>
+
+    <!-- Totals -->
+    <div class="modal-totals">
+      <div class="total-row">
+        <span>Subtotal</span>
+        <span>{{ fmtInr(selectedBill.subtotal) }}</span>
+      </div>
+      <div class="total-row">
+        <span>Tax ({{ selectedBill.tax }}%)</span>
+        <span>{{ fmtInr(calcTax(selectedBill)) }}</span>
+      </div>
+      <div class="total-row" *ngIf="selectedBill.discount > 0">
+        <span>Discount</span>
+        <span class="discount">-{{ fmtInr(selectedBill.discount) }}</span>
+      </div>
+      <div class="total-row final">
+        <span>TOTAL</span>
+        <span>{{ fmtInr(calcTotal(selectedBill)) }}</span>
+      </div>
+    </div>
+
+    <!-- Modal download buttons -->
+    <div class="modal-actions">
+      <button class="modal-action-btn pdf"
+        (click)="downloadPdf(selectedBill)">
+        📄 Download PDF
+      </button>
+      <button class="modal-action-btn excel"
+        (click)="downloadExcel(selectedBill)">
+        📊 Download Excel
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast"
+  [class.show]="toastVisible"
+  [class.success]="toastType === 'success'"
+  [class.danger]="toastType === 'danger'"
+  [class.info]="toastType === 'info'">
+  <span *ngIf="toastType === 'success'">✅</span>
+  <span *ngIf="toastType === 'danger'">❌</span>
+  <span *ngIf="toastType === 'info'">ℹ️</span>
+  {{ toastMsg }}
+</div>

@@ -3,12 +3,13 @@
   padding: 0;
   box-sizing: border-box;
 }
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;  /* ← ADD THIS, prevents double scrollbars */
+  overflow: hidden; /* ← ADD THIS, prevents double scrollbars */
 }
 
 :root {
@@ -101,3 +102,25 @@ app-root {
   background: var(--danger);
 }
 
+.d-block {
+  display: block !important;
+}
+@media print {
+  /* Hide everything at the body level */
+  body > * {
+    display: none !important;
+  }
+
+  /* Hide the Angular app root */
+  app-root {
+    display: none !important;
+  }
+
+  /* Safety net: hide sidebar by tag and common class names */
+  app-sidebar,
+  .sidebar,
+  .side-nav,
+  nav {
+    display: none !important;
+  }
+}

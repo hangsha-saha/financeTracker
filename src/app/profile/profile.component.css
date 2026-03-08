@@ -49,29 +49,9 @@
   width: 120px; height: 120px; border-radius: 50%;
   background: linear-gradient(135deg, var(--primary), #ffd580);
   padding: 3px; margin-bottom: var(--spacing-lg);
-  position: relative; cursor: pointer;
 }
 .avatar-inner { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: var(--page-bg); }
 .avatar-inner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-.avatar-overlay {
-  position: absolute; inset: 3px; border-radius: 50%;
-  background: rgba(0,0,0,0.5);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 0.2s; color: white; pointer-events: none;
-}
-.avatar-ring:hover .avatar-overlay { opacity: 1; }
-.avatar-overlay .cam  { font-size: 24px; }
-.avatar-overlay span  { font-size: 11px; font-weight: 600; margin-top: 4px; }
-
-.avatar-edit-btn {
-  position: absolute; bottom: 2px; right: 2px;
-  width: 30px; height: 30px; background: var(--primary); color: white;
-  border: 2px solid white; border-radius: 50%; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 13px; transition: all 0.2s; box-shadow: var(--shadow-sm);
-}
-.avatar-edit-btn:hover { background: var(--primary-dark); transform: scale(1.1); }
 
 .left-name  { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
 .left-badge {
@@ -107,6 +87,7 @@
 .pg-section:nth-child(2) { animation-delay: 0.10s; }
 .pg-section:nth-child(3) { animation-delay: 0.15s; }
 .pg-section:nth-child(4) { animation-delay: 0.20s; }
+.pg-section:nth-child(5) { animation-delay: 0.25s; }
 
 @keyframes pgSlide {
   from { opacity: 0; transform: translateY(16px); }
@@ -126,6 +107,7 @@
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--spacing-md); }
 .form-group:last-child { margin-bottom: 0; }
 .form-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; }
+.form-hint  { font-size: 11px; color: var(--text-tertiary); }
 .form-input, .form-select, .form-textarea {
   padding: 10px 14px; border: 1px solid var(--border-color);
   border-radius: var(--radius-sm); font-size: 13px;
@@ -156,7 +138,150 @@
 /* ══ Section actions ══ */
 .sec-actions { display: flex; justify-content: flex-end; gap: var(--spacing-sm); margin-top: var(--spacing-lg); padding-top: var(--spacing-md); border-top: 1px solid var(--border-color); }
 
-/* ══ Danger zone ══ */
+/* ══ Restaurant empty state ══ */
+.restaurant-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: var(--spacing-xl) var(--spacing-lg); text-align: center; gap: var(--spacing-sm);
+}
+.empty-icon  { font-size: 40px; margin-bottom: 4px; }
+.empty-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.empty-desc  { font-size: 13px; color: var(--text-secondary); margin-bottom: var(--spacing-sm); max-width: 320px; }
+
+/* ══ Restaurant summary ══ */
+.restaurant-summary { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.rs-row  { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); }
+.rs-item { display: flex; flex-direction: column; gap: 4px; }
+.rs-full { grid-column: 1 / -1; }
+.rs-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); }
+.rs-value { font-size: 14px; color: var(--text-primary); font-weight: 500; }
+
+/* ══ Voucher Table ══ */
+.voucher-table-header {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr 1fr 0.8fr;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--page-bg);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.voucher-table-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr 1fr 0.8fr;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.voucher-table-row:last-child { border-bottom: none; }
+.voucher-table-row:hover { background: rgba(255,140,0,0.03); }
+
+.voucher-code-pill {
+  display: inline-block;
+  background: rgba(255,140,0,0.12);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+.voucher-pct  { font-weight: 700; color: var(--success, #2e7d32); }
+.voucher-min  { color: var(--text-secondary); font-size: 13px; }
+.voucher-exp  { color: var(--text-secondary); font-size: 12px; }
+
+.voucher-status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.voucher-status-badge.active   { background: rgba(46,125,50,0.12); color: #2e7d32; }
+.voucher-status-badge.inactive { background: rgba(158,158,158,0.15); color: #757575; }
+
+/* ══ Voucher Modal — status toggle ══ */
+.voucher-status-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.status-btn {
+  flex: 1;
+  padding: 9px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  color: var(--text-secondary);
+}
+
+.status-btn.status-active {
+  border-color: #2e7d32;
+  background: rgba(46,125,50,0.08);
+  color: #2e7d32;
+}
+
+.status-btn.status-inactive {
+  border-color: #9e9e9e;
+  background: rgba(158,158,158,0.08);
+  color: #616161;
+}
+
+/* ══ Voucher Preview Card ══ */
+.voucher-preview {
+  margin-top: var(--spacing-md);
+}
+.vp-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+.vp-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 2px dashed var(--primary);
+  border-radius: var(--radius-sm);
+  background: rgba(255,140,0,0.04);
+}
+.vp-code {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 1px;
+}
+.vp-details {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.voucher-code-input { text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+
+/* ══ Danger / Session zone ══ */
 .danger-section { border-color: rgba(239,83,80,0.3); }
 .danger-hd      { border-bottom-color: var(--danger); }
 .danger-title   { color: var(--danger); }
@@ -172,6 +297,52 @@
 .btn-danger    { background: var(--danger); color: white; }
 .btn-danger:hover { background: #c62828; }
 
+/* ══ Modals ══ */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.modal-backdrop.open {
+  opacity: 1; pointer-events: all;
+}
+.modal-box {
+  background: white;
+  border-radius: var(--radius-md);
+  width: 100%;
+  max-width: 540px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  transform: translateY(20px) scale(0.97);
+  transition: transform 0.25s ease;
+  overflow: hidden;
+}
+.modal-backdrop.open .modal-box {
+  transform: translateY(0) scale(1);
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: var(--spacing-lg);
+  border-bottom: 2px solid var(--primary);
+}
+.modal-title { font-size: 16px; font-weight: 700; }
+.modal-close {
+  background: none; border: none; font-size: 16px; cursor: pointer;
+  color: var(--text-secondary); width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; transition: all 0.2s;
+}
+.modal-close:hover { background: var(--page-bg); color: var(--danger); }
+.modal-body   { padding: var(--spacing-lg); }
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+  background: var(--page-bg);
+}
+
 /* ══ Toast ══ */
 .toast {
   position: fixed; bottom: 24px; right: 24px;
@@ -186,11 +357,35 @@
 .toast.error   { background: var(--danger); }
 .toast.info    { background: var(--primary); }
 
+/* ══ Loading ══ */
+.restaurant-loading {
+  display: flex; align-items: center;
+  gap: 10px; color: var(--text-secondary); padding: 20px 0;
+}
+.loading-spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ══ Scrollbar ══ */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,140,0,0.25); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,140,0,0.5); }
+
+/* ══ Restaurant others ══ */
+.rs-others { margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px; }
+.rs-others-label { font-size: 12px; color: var(--text-tertiary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.rs-other-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s; font-size: 14px; }
+.rs-other-item:hover { background: var(--bg-hover); }
+.rs-other-item.active { background: rgba(255,140,0,0.08); }
+.rs-other-badge { font-size: 11px; background: var(--primary); color: white; padding: 2px 8px; border-radius: 20px; }
+
+.required { color: var(--danger); }
 
 @media (max-width: 900px) {
   .profile-grid { grid-template-columns: 1fr; }
@@ -200,4 +395,16 @@
   :host { height: auto; overflow: auto; }
   .content { padding: var(--spacing-md); }
   .form-row { grid-template-columns: 1fr; }
+  .rs-row   { grid-template-columns: 1fr; }
+  .modal-box { margin: var(--spacing-md); }
+  .voucher-table-header,
+  .voucher-table-row {
+    grid-template-columns: 1fr 0.6fr 0.8fr;
+  }
+  .voucher-table-header span:nth-child(4),
+  .voucher-table-header span:nth-child(5),
+  .voucher-table-row span:nth-child(4),
+  .voucher-table-row span:nth-child(5) {
+    display: none;
+  }
 }

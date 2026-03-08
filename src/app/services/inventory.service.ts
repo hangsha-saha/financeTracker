@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { AuthService } from './auth.service';
 
 // ── API response structures ──
 export interface InventoryApiItem {
@@ -15,9 +15,9 @@ export interface InventoryApiItem {
   minimumQuantity: number;
   note:            string;
   currentDate:     string;
-  vendorName:      string;   // flat string in new API
-  vendorId:        number;   // flat number in new API
-  userId:          number;   // flat number in new API
+  vendorName:      string;
+  vendorId:        number;
+  userId:          number;
 }
 
 export interface VendorNameItem {
@@ -25,7 +25,6 @@ export interface VendorNameItem {
   name:     string;
 }
 
-// ── Payloads ──
 export interface InventoryAddPayload {
   itemName:        string;
   category:        string;
@@ -53,13 +52,18 @@ export interface InventoryUpdatePayload {
 @Injectable({ providedIn: 'root' })
 export class InventoryService {
 
-  private readonly BASE     = 'http://192.168.1.39:3000/inventory';
+  private readonly BASE      = 'http://192.168.1.39:3000/inventory';
   private readonly VEND_BASE = 'http://192.168.1.39:3000/vendors';
 
-  // ── Current user — replace with AuthService later ──
-  readonly CURRENT_USER_ID: number = 1;
+  constructor(
+    private http:        HttpClient,
+    private authService: AuthService
+  ) {}
 
-  constructor(private http: HttpClient) {}
+  // ── Always reads fresh from AuthService ──
+  private get adminId(): number {
+    return this.authService.getCurrentUserId();
+  }
 
   // ════════════════════════════════════════
   // GET ALL — GET /inventory/{userId}/all
@@ -67,7 +71,7 @@ export class InventoryService {
 
   getAll(): Observable<InventoryApiItem[]> {
     return this.http.get<InventoryApiItem[]>(
-      `${this.BASE}/${this.CURRENT_USER_ID}/all`
+      `${this.BASE}/${this.adminId}/all`
     );
   }
 
@@ -77,7 +81,7 @@ export class InventoryService {
 
   getById(inventoryId: number): Observable<InventoryApiItem> {
     return this.http.get<InventoryApiItem>(
-      `${this.BASE}/${this.CURRENT_USER_ID}/get/${inventoryId}`
+      `${this.BASE}/${this.adminId}/get/${inventoryId}`
     );
   }
 
@@ -87,7 +91,7 @@ export class InventoryService {
 
   getByVendor(vendorId: number): Observable<InventoryApiItem[]> {
     return this.http.get<InventoryApiItem[]>(
-      `${this.BASE}/${this.CURRENT_USER_ID}/vendor/${vendorId}`
+      `${this.BASE}/${this.adminId}/vendor/${vendorId}`
     );
   }
 
@@ -97,7 +101,7 @@ export class InventoryService {
 
   add(payload: InventoryAddPayload): Observable<InventoryApiItem> {
     return this.http.post<InventoryApiItem>(
-      `${this.BASE}/${this.CURRENT_USER_ID}/add`,
+      `${this.BASE}/${this.adminId}/add`,
       payload
     );
   }
@@ -108,10 +112,10 @@ export class InventoryService {
 
   update(
     inventoryId: number,
-    payload: InventoryUpdatePayload
+    payload:     InventoryUpdatePayload
   ): Observable<InventoryApiItem> {
     return this.http.put<InventoryApiItem>(
-      `${this.BASE}/${this.CURRENT_USER_ID}/update/${inventoryId}`,
+      `${this.BASE}/${this.adminId}/update/${inventoryId}`,
       payload
     );
   }
@@ -122,18 +126,17 @@ export class InventoryService {
 
   delete(inventoryId: number): Observable<{ success: boolean; message: string }> {
     return this.http.delete<{ success: boolean; message: string }>(
-      `${this.BASE}/${this.CURRENT_USER_ID}/delete/${inventoryId}`
+      `${this.BASE}/${this.adminId}/delete/${inventoryId}`
     );
   }
 
   // ════════════════════════════════════════
   // VENDOR NAMES — GET /vendors/{userId}/names
-  // (for the vendor dropdown in the modal)
   // ════════════════════════════════════════
 
   getVendorNames(): Observable<VendorNameItem[]> {
     return this.http.get<VendorNameItem[]>(
-      `${this.VEND_BASE}/${this.CURRENT_USER_ID}/names`
+      `${this.VEND_BASE}/${this.adminId}/names`
     );
   }
 }
