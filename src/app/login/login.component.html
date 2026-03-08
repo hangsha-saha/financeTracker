@@ -72,10 +72,10 @@
         </div>
 
         <!-- Remember Me -->
-        <div class="remember-me">
+        <!-- <div class="remember-me">
           <input type="checkbox" id="rememberMe" class="checkbox" [(ngModel)]="rememberMe" name="rememberMe">
           <label for="rememberMe" class="remember-label">Remember me</label>
-        </div>
+        </div> -->
 
         <!-- Login Error -->
         <div class="error-message login-error" *ngIf="loginError">{{ loginError }}</div>
@@ -90,15 +90,6 @@
       <!-- Register Link -->
       <div class="register-link">
         Don't have an account? <a href="#" (click)="onRegisterClick($event)">Register</a>
-      </div>
-
-      <!-- Demo Credentials -->
-      <div class="demo-box">
-        <span class="demo-label">Demo Credentials</span>
-        <div class="demo-credentials">
-          <strong>Username:</strong> admin<br>
-          <strong>Password:</strong> admin
-        </div>
       </div>
 
     </div>

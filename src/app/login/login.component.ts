@@ -3,29 +3,28 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService, AuthUser } from '../services/auth.service';
 
 @Component({
-  selector:    'app-login',
+  selector: 'app-login',
   templateUrl: './login.component.html',
-  styleUrls:   ['./login.component.css']
+  styleUrls: ['./login.component.css'],
 })
 export class LoginComponent implements OnInit {
-
-  username:        string  = '';
-  password:        string  = '';
-  rememberMe:      boolean = false;
+  username: string = '';
+  password: string = '';
+  rememberMe: boolean = false;
   passwordVisible: boolean = false;
-  isLoading:       boolean = false;
-  showSuccess:     boolean = false;
+  isLoading: boolean = false;
+  showSuccess: boolean = false;
 
   usernameError: string = '';
   passwordError: string = '';
-  loginError:    string = '';
+  loginError: string = '';
 
   private returnUrl: string = '/dashboard';
 
   constructor(
     private authService: AuthService,
-    private router:      Router,
-    private route:       ActivatedRoute
+    private router: Router,
+    private route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
@@ -35,7 +34,8 @@ export class LoginComponent implements OnInit {
       this.rememberMe = true;
     }
 
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
+    this.returnUrl =
+      this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
 
     if (this.authService.isLoggedIn()) {
       this.router.navigate([this.returnUrl]);
@@ -58,46 +58,76 @@ export class LoginComponent implements OnInit {
     this.loginError    = '';
 
     let valid = true;
-    if (!this.username.trim()) { this.usernameError = 'Please enter your username.'; valid = false; }
-    if (!this.password)        { this.passwordError = 'Please enter your password.'; valid = false; }
+    if (!this.username.trim()) {
+      this.usernameError = 'Please enter your username.';
+      valid = false;
+    }
+    if (!this.password) {
+      this.passwordError = 'Please enter your password.';
+      valid = false;
+    }
     if (!valid) return;
 
     this.isLoading = true;
 
-    this.authService.login(this.username.trim(), this.password, this.rememberMe)
+    this.authService
+      .login(this.username.trim(), this.password, this.rememberMe)
       .subscribe({
-        next: res => {
+        next: (res: any) => {
           console.log('[Login] Raw response:', res);
-          console.log('[Login] res.user:', res.user);
 
-          // ── Normalise the user object ──
-          // Different backends return different field names.
-          // We normalise to AuthUser before storing.
-          const raw: any   = res.user || res;
+          // ── Normalise user object ──
+          const raw: any = res.user || res;
+
+          // ── Grab adminId from response root level FIRST ──
+          // Response shape: { token, message, user: {...}, adminId: 30 }
+          // adminId is present for MANAGER / WAITER — null/missing for OWNER
+          const adminId = res.adminId ?? res.admin_id ?? null;
+
+          // ── Build normalised user WITH adminId included from the start ──
           const normalised: AuthUser = {
             userId:    raw.userId    ?? raw.id         ?? raw.user_id ?? 0,
             userName:  raw.userName  ?? raw.username   ?? raw.name   ?? this.username,
             email:     raw.email     ?? raw.emailId    ?? raw.emailAddress ?? '',
             role:      raw.role      ?? raw.userRole   ?? null,
             createdAt: raw.createdAt ?? raw.created_at ?? null,
+            // ← embed adminId directly into the user object if present
+            ...(adminId && adminId !== (raw.userId ?? raw.id ?? 0)
+              ? { adminId }
+              : {}),
           };
 
-          console.log('[Login] Normalised user to store:', normalised);
+          console.log('[Login] Normalised user (with adminId):', normalised);
 
-          // Persist the normalised user so sidebar can read it reliably
+          // ── Persist to ft_user in one single call ──
           this.authService.updateStoredUser(normalised);
 
-          // ── Resolve role ──
-          const rawRole = normalised.role ?? 'ADMIN';
-          this.authService.setResolvedRole(rawRole);
+          // ── Also store adminId in ft_employee_admin_id (separate key) ──
+          if (adminId && adminId !== normalised.userId) {
+            console.log('[Login] Storing adminId in ft_employee_admin_id:', adminId);
+            this.authService.setEmployeeAdminId(adminId);
+          } else {
+            // OWNER — clear any stale adminId from previous session
+            this.authService.clearEmployeeAdminId();
+          }
 
-          // ── Route by role ──
-          const r = rawRole.toLowerCase();
-          this.returnUrl = r.includes('waiter') ? '/view-bills' : '/dashboard';
+          // ── Role resolution ──
+          const rawRole   = (normalised.role ?? '').toUpperCase();
+          const isWaiter  = rawRole === 'WAITER';
+          const isManager = rawRole === 'MANAGER';
+
+          if (isWaiter || isManager) {
+            this.authService.setResolvedRole(rawRole.toLowerCase());
+          } else {
+            this.authService.setResolvedRole('admin');
+          }
+
+          // ── Route ──
+          this.returnUrl = isWaiter ? '/view-bills' : '/dashboard';
 
           this.navigateAfterLogin();
         },
-        error: err => {
+        error: (err) => {
           console.error('[Login] Failed:', err.status, err.error);
           this.isLoading = false;
 
@@ -110,7 +140,7 @@ export class LoginComponent implements OnInit {
           } else {
             this.loginError = err.error?.message || 'Login failed. Please try again.';
           }
-        }
+        },
       });
   }
 

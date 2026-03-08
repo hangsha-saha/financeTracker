@@ -49,9 +49,13 @@ export class ProfileComponent implements OnInit {
   mAddress:            string  = '';
   isSavingRestaurant:  boolean = false;
 
+  // ── Restaurant Modal Errors ──
+  mRestaurantErr: string = '';
+  mGstErr:        string = '';
+
   // ── Vouchers ──
-  vouchers:         VoucherOption[] = [];
-  isLoadingVouchers: boolean        = false;
+  vouchers:          VoucherOption[] = [];
+  isLoadingVouchers: boolean         = false;
 
   // ── Voucher Modal ──
   voucherModalOpen: boolean = false;
@@ -95,6 +99,33 @@ export class ProfileComponent implements OnInit {
   }
 
   // ════════════════════════════════════════
+  // GST VALIDATION
+  // Format: 2-digit state code + 10-char PAN + 1-digit entity + Z + 1-char checksum
+  // Example: 22AAAAA0000A1Z5
+  // GST is optional — blank is allowed
+  // ════════════════════════════════════════
+
+  private isValidGst(gst: string): boolean {
+    if (!gst.trim()) return true;   // optional field
+    return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(
+      gst.trim().toUpperCase()
+    );
+  }
+
+  validateGst(): void {
+    const gst = this.mGst.trim();
+    if (!gst) {
+      this.mGstErr = '';
+      return;
+    }
+    this.mGstErr = this.isValidGst(gst)
+      ? ''
+      : 'Enter a valid GST number (e.g. 22AAAAA0000A1Z5).';
+  }
+
+  clearGstErr(): void { this.mGstErr = ''; }
+
+  // ════════════════════════════════════════
   // LOAD USER FROM ft_user SESSION
   // ════════════════════════════════════════
 
@@ -116,14 +147,14 @@ export class ProfileComponent implements OnInit {
           const p = JSON.parse(rawProfile);
           this.avatarSrc = (p.avatar && p.avatar.startsWith('data:image'))
             ? p.avatar : this.generateAvatar(authUser.userName);
-          if (p.phone)        this.fPhone   = p.phone;
-          if (p.dob)          this.fDob     = p.dob;
-          if (p.bio)          this.fBio     = p.bio;
-          if (p.firstName)    this.fFirst   = p.firstName;
-          if (p.lastName)     this.fLast    = p.lastName;
+          if (p.phone)       this.fPhone   = p.phone;
+          if (p.dob)         this.fDob     = p.dob;
+          if (p.bio)         this.fBio     = p.bio;
+          if (p.firstName)   this.fFirst   = p.firstName;
+          if (p.lastName)    this.fLast    = p.lastName;
           if (p.displayName) {
-            this.fDisplay  = p.displayName;
-            this.leftName  = p.displayName;
+            this.fDisplay = p.displayName;
+            this.leftName = p.displayName;
           }
         } catch(e) {}
       } else {
@@ -178,22 +209,33 @@ export class ProfileComponent implements OnInit {
       this.mGst        = '';
       this.mAddress    = '';
     }
+    // Clear errors whenever modal opens
+    this.mRestaurantErr = '';
+    this.mGstErr        = '';
     this.restaurantModalOpen = true;
   }
 
   closeRestaurantModal(): void {
     this.restaurantModalOpen = false;
+    this.mRestaurantErr = '';
+    this.mGstErr        = '';
   }
 
   saveRestaurant(): void {
+    // ── Validate restaurant name ──
+    this.mRestaurantErr = '';
     if (!this.mRestaurant.trim()) {
-      this.showToast('Restaurant name is required.', 'error');
-      return;
+      this.mRestaurantErr = 'Restaurant name is required.';
     }
+
+    // ── Validate GST ──
+    this.validateGst();
+
+    if (this.mRestaurantErr || this.mGstErr) return;
 
     const payload = {
       restaurantName: this.mRestaurant.trim(),
-      gstNumber:      this.mGst.trim(),
+      gstNumber:      this.mGst.trim().toUpperCase(),
       address:        this.mAddress.trim()
     };
 
@@ -265,7 +307,6 @@ export class ProfileComponent implements OnInit {
   }
 
   saveVoucher(): void {
-    // ── Validation ──
     if (!this.vCode.trim()) {
       this.showToast('Voucher code is required.', 'error');
       return;
@@ -283,7 +324,6 @@ export class ProfileComponent implements OnInit {
       return;
     }
 
-    // Convert date from YYYY-MM-DD (input type=date) → DD-MM-YYYY (API format)
     const apiDate = this.formatDateForApi(this.vExpireDate);
 
     const payload: CreateVoucherPayload = {
@@ -302,7 +342,7 @@ export class ProfileComponent implements OnInit {
         console.log('[Voucher] created:', res);
         this.closeVoucherModal();
         this.showToast(`✓ Voucher "${payload.code}" added!`, 'success');
-        this.loadVouchers(); // refresh list
+        this.loadVouchers();
       },
       error: (err) => {
         this.isSavingVoucher = false;
@@ -328,7 +368,6 @@ export class ProfileComponent implements OnInit {
     if (!dateStr) return '—';
     const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
-    // if DD-MM-YYYY
     return `${parts[0]}/${parts[1]}/${parts[2]}`;
   }
 
@@ -392,10 +431,10 @@ export class ProfileComponent implements OnInit {
   checkPwStrength(): void {
     const v = this.fNewPw;
     let s = 0;
-    if (v.length >= 8)            s++;
-    if (/[A-Z]/.test(v))          s++;
-    if (/[0-9]/.test(v))          s++;
-    if (/[^A-Za-z0-9]/.test(v))  s++;
+    if (v.length >= 8)           s++;
+    if (/[A-Z]/.test(v))         s++;
+    if (/[0-9]/.test(v))         s++;
+    if (/[^A-Za-z0-9]/.test(v)) s++;
 
     const levels = [
       { w: '0%',   c: '',               t: 'Enter a password' },

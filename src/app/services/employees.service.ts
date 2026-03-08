@@ -43,8 +43,26 @@ export class EmployeesService {
     private authService: AuthService
   ) {}
 
-  private get adminId(): number {
-    return this.authService.getCurrentUserId();
+  // ════════════════════════════════════════
+  // RESOLVE WHICH ID TO USE FOR API CALLS
+  //
+  // OWNER / ADMIN  → use their own userId
+  // MANAGER/WAITER → use adminId stored in ft_user if present,
+  //                  otherwise fall back to their own userId
+  // ════════════════════════════════════════
+
+  private getApiUserId(): number {
+    const currentUser = this.authService.getCurrentUser();
+    const adminId     = (currentUser as any)?.adminId ?? 0;
+    const userId      = this.authService.getCurrentUserId();
+
+    if (adminId && adminId !== 0) {
+      console.log('[EmployeesService] Using adminId for API calls:', adminId);
+      return adminId;
+    }
+
+    console.log('[EmployeesService] Using userId for API calls:', userId);
+    return userId;
   }
 
   // ════════════════════════════════════════
@@ -157,30 +175,17 @@ export class EmployeesService {
   // ════════════════════════════════════════
   // USER REGISTRATION (Auth server)
   // Called only for Manager / Waiter
-  //
-  // Payload sent to POST /api/users/register-owner:
-  //   {
-  //     username: string,
-  //     password: string,
-  //     email:    string,
-  //     role:     "MANAGER" | "WAITER"   ← exact API enum value
-  //   }
   // ════════════════════════════════════════
 
   private registerUserCredentials(
     username: string,
     password: string,
     email:    string,
-    role:     string   // display value e.g. "Manager" — converted to API enum below
+    role:     string
   ): Observable<any> {
-
-    // Convert display role → API enum: "Manager" → "MANAGER", "Waiter" → "WAITER"
     const apiRole = this.ROLE_TO_API[role] ?? role.toUpperCase();
-
     const payload = { username, password, email, role: apiRole };
-
     console.log('[AUTH 192.168.1.39:3000] REGISTER USER — payload:', payload);
-
     return this.http.post<any>(
       `${this.AUTH_BASE}/users/register-owner`,
       payload
@@ -203,9 +208,10 @@ export class EmployeesService {
   // ════════════════════════════════════════
 
   getAll(): Observable<Employee[]> {
-    console.log('[EMP] GET ALL — adminId:', this.adminId);
+    const apiUserId = this.getApiUserId();
+    console.log('[EMP] GET ALL — apiUserId:', apiUserId);
     return this.http.get<any[]>(
-      `${this.BASE}/user/${this.adminId}`
+      `${this.BASE}/user/${apiUserId}`
     ).pipe(
       map(list => list.map(e => this.mapEmployee(e))),
       tap(list => { this.cache = [...list]; })
@@ -220,47 +226,34 @@ export class EmployeesService {
 
   // ════════════════════════════════════════
   // CREATE
-  //
-  // Manager / Waiter → 2 steps:
-  //   Step 1: POST /api/users/register-owner
-  //           { username, password, email, role: "MANAGER"|"WAITER" }
-  //   Step 2: POST /employee/{adminId}
-  //           { empName, phone, email, salary, role, joinDate }
-  //   Step 2 fails → rollback Step 1
-  //
-  // Other roles → Step 2 only
   // ════════════════════════════════════════
 
   create(employee: Omit<Employee, 'id'>): Observable<Employee> {
     const needsCredentials = this.CREDENTIAL_ROLES.includes(employee.role);
+    const apiUserId        = this.getApiUserId();
 
     if (needsCredentials && employee.username && employee.password) {
 
-      // ── STEP 1: Register on auth server ──
       return this.registerUserCredentials(
         employee.username,
         employee.password,
         employee.email,
-        employee.role      // e.g. "Manager" or "Waiter" — converted inside method
+        employee.role
       ).pipe(
         tap(userRes =>
           console.log('[AUTH] User registered — userId:',
             userRes?.user?.userId ?? userRes?.userId ?? 'unknown')
         ),
-
-        // ── STEP 2: Insert employee record ──
         switchMap(userRes => {
           const body = this.toApiPayload(employee);
-          console.log('[EMP] INSERT — adminId:', this.adminId, '— payload:', body);
+          console.log('[EMP] INSERT — apiUserId:', apiUserId, '— payload:', body);
 
           return this.http.post<any>(
-            `${this.BASE}/${this.adminId}`,
+            `${this.BASE}/${apiUserId}`,
             body
           ).pipe(
             map(e => this.mapEmployee(e)),
             tap(e => this.cache.push(e)),
-
-            // Employee insert failed → rollback user on auth server
             catchError(empErr => {
               console.error('[EMP] Insert failed — rolling back auth user');
               const createdUserId =
@@ -275,13 +268,12 @@ export class EmployeesService {
       );
 
     } else {
-      // ── Non-credential role: single step ──
       const body = this.toApiPayload(employee);
-      console.log('[EMP] CREATE (no credentials) — adminId:',
-        this.adminId, '— payload:', body);
+      console.log('[EMP] CREATE (no credentials) — apiUserId:',
+        apiUserId, '— payload:', body);
 
       return this.http.post<any>(
-        `${this.BASE}/${this.adminId}`,
+        `${this.BASE}/${apiUserId}`,
         body
       ).pipe(
         map(e => this.mapEmployee(e)),
@@ -336,8 +328,6 @@ export class EmployeesService {
       tap(list => { this.salaryCache = [...list]; })
     );
   }
-
-  // Add this method to EmployeesService
 
   getSalariesByEmployee(employeeId: number): Observable<SalaryRecord[]> {
     return this.http.get<any[]>(`${this.SALARY_BASE}/${employeeId}`).pipe(

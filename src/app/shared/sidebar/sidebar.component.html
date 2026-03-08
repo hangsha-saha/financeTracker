@@ -87,7 +87,7 @@
       <p>{{ sidebarRole }}</p>
     </div>
 
-    <div class="sidebar-user-arrow-wrap">
+    <div class="sidebar-user-arrow-wrap" *ngIf="canSee('view-bills')">
       <span class="sidebar-user-arrow">↑</span>
       <span class="sidebar-profile-hint">Profile</span>
     </div>

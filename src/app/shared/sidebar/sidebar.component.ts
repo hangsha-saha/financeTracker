@@ -12,10 +12,10 @@ const ROLE_PAGES: { [role: string]: string[] } = {
   ],
   manager: [
     'dashboard', 'income', 'menu', 'reports',
-    'generate-bill', 'view-bills', 'profile'
+    'generate-bill', 'view-bills'
   ],
   waiter: [
-    'view-bills', 'profile'
+    'view-bills', 'generate-bill'
   ],
 };
 

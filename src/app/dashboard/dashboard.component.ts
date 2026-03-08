@@ -49,8 +49,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('expensePieCanvas')    expensePieCanvas!:    ElementRef<HTMLCanvasElement>;
   @ViewChild('profitCanvas')        profitCanvas!:        ElementRef<HTMLCanvasElement>;
 
-  private readonly BASE     = 'http://192.168.1.39:3000';
-  private readonly BASE_API = 'http://192.168.1.21:8080';
+  private readonly BASE = 'http://192.168.1.39:3000';
 
   // ── Header ──
   headerRoleLabel = '';
@@ -169,6 +168,28 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ════════════════════════════════════════
+  // RESOLVE WHICH ID TO USE FOR API CALLS
+  //
+  // OWNER / ADMIN  → use their own userId
+  // MANAGER/WAITER → use adminId (owner's id) if present,
+  //                  otherwise fall back to their own userId
+  // ════════════════════════════════════════
+
+  private getApiUserId(): number {
+    const currentUser = this.authService.getCurrentUser();
+    const adminId     = (currentUser as any)?.adminId ?? 0;
+    const userId      = this.authService.getCurrentUserId();
+
+    if (adminId && adminId !== 0) {
+      console.log('[Dashboard] Using adminId for API calls:', adminId);
+      return adminId;
+    }
+
+    console.log('[Dashboard] Using userId for API calls:', userId);
+    return userId;
+  }
+
+  // ════════════════════════════════════════
   // DATE HELPERS  (for API 1 only)
   // ════════════════════════════════════════
 
@@ -226,19 +247,23 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     this.isLoading = true;
     this.apiError  = '';
 
-    const userId               = this.authService.getCurrentUserId();
+    // ── Resolve the correct ID ──
+    // If adminId exists in ft_user → use it (MANAGER / WAITER seeing owner's data)
+    // Otherwise use own userId (OWNER / ADMIN)
+    const apiUserId              = this.getApiUserId();
     const { startDate, endDate } = this.getDateRange();
 
     // API 1 — summary scalars
-    const url1 = `${this.BASE}/analytics/user/${userId}?startDate=${startDate}&endDate=${endDate}`;
+    const url1 = `${this.BASE}/analytics/user/${apiUserId}?startDate=${startDate}&endDate=${endDate}`;
 
     // API 2 — chart data
     // For custom date range we fall back to MONTHLY bars (API 2 doesn't take a date range)
     const chartPeriod: ChartPeriod = this.currentDateRange
       ? 'MONTHLY'
       : (this.PERIOD_TO_CHART_API[this.currentPeriod] || 'MONTHLY');
-    const url2 = `${this.BASE}/analytics/income-expense?ownerId=${userId}&period=${chartPeriod}&category=ALL`;
+    const url2 = `${this.BASE}/analytics/income-expense?ownerId=${apiUserId}&period=${chartPeriod}&category=ALL`;
 
+    console.log('[Dashboard] Resolved apiUserId:', apiUserId);
     console.log('[Dashboard] API1:', url1);
     console.log('[Dashboard] API2:', url2);
 

@@ -40,15 +40,15 @@ export interface IncomeRecord {
   styleUrls: ['./income.component.css']
 })
 export class IncomeComponent implements OnInit {
-  
+
   // ── API ──
-  
-  // Add this getter:
+  // Resolves the correct ID:
+  // OWNER / ADMIN  → their own userId
+  // MANAGER/WAITER → adminId stored in ft_user (owner's id), fallback to userId
   private get API_URL(): string {
-    return `http://192.168.1.39:3000/bills/user/${this.authService.getCurrentUserId()}`;
+    return `http://192.168.1.39:3000/bills/user/${this.getApiUserId()}`;
   }
-  
-  
+
   // ── Sidebar ──
   sidebarName: string    = 'Admin User';
   sidebarRole: string    = 'Admin';
@@ -114,10 +114,34 @@ export class IncomeComponent implements OnInit {
     this.fetchBills();
   }
 
+  // ════════════════════════════════════════
+  // RESOLVE WHICH ID TO USE FOR API CALLS
+  //
+  // OWNER / ADMIN  → use their own userId
+  // MANAGER/WAITER → use adminId stored in ft_user if present,
+  //                  otherwise fall back to their own userId
+  // ════════════════════════════════════════
+
+  private getApiUserId(): number {
+    const currentUser = this.authService.getCurrentUser();
+    const adminId     = (currentUser as any)?.adminId ?? 0;
+    const userId      = this.authService.getCurrentUserId();
+
+    if (adminId && adminId !== 0) {
+      console.log('[Income] Using adminId for API calls:', adminId);
+      return adminId;
+    }
+
+    console.log('[Income] Using userId for API calls:', userId);
+    return userId;
+  }
+
   // ── Fetch from API ──
   fetchBills(): void {
     this.isLoading = true;
     this.errorMsg  = '';
+
+    console.log('[Income] Fetching bills from:', this.API_URL);
 
     this.http.get<Bill[]>(this.API_URL).subscribe({
       next: (bills) => {
@@ -192,7 +216,7 @@ export class IncomeComponent implements OnInit {
 
       // Type filter — normalize both sides
       if (this.fType) {
-        const normalizedType = r.type.replace(/\s+/g, ' ').trim();
+        const normalizedType   = r.type.replace(/\s+/g, ' ').trim();
         const normalizedFilter = this.fType.toUpperCase().replace(/\s+/g, ' ').trim();
         if (normalizedType !== normalizedFilter) return false;
       }
@@ -230,12 +254,12 @@ export class IncomeComponent implements OnInit {
 
   buildFilterTags(): void {
     const tags: string[] = [];
-    if (this.fDate)              tags.push(`📅 ${this.fDate}`);
-    if (this.fType)              tags.push(`Type: ${this.fType}`);
-    if (this.fPayment)           tags.push(`Pay: ${this.fPayment}`);
+    if (this.fDate)                 tags.push(`📅 ${this.fDate}`);
+    if (this.fType)                 tags.push(`Type: ${this.fType}`);
+    if (this.fPayment)              tags.push(`Pay: ${this.fPayment}`);
     if (this.fMin && this.fMin > 0) tags.push(`Min: ₹${this.fMin}`);
-    if (this.fMax)               tags.push(`Max: ₹${this.fMax}`);
-    if (this.fSearch.trim())     tags.push(`"${this.fSearch.trim()}"`);
+    if (this.fMax)                  tags.push(`Max: ₹${this.fMax}`);
+    if (this.fSearch.trim())        tags.push(`"${this.fSearch.trim()}"`);
     this.filterTags = tags;
   }
 

@@ -27,60 +27,62 @@ export class RestaurantService {
     private authService: AuthService
   ) {}
 
-  private get userId(): number {
-    return this.authService.getCurrentUserId();
+  // ════════════════════════════════════════
+  // RESOLVE WHICH ID TO USE FOR API CALLS
+  //
+  // OWNER / ADMIN  → use their own userId
+  // MANAGER/WAITER → use adminId stored in ft_user if present,
+  //                  otherwise fall back to their own userId
+  // ════════════════════════════════════════
+
+  private getApiUserId(): number {
+    const currentUser = this.authService.getCurrentUser();
+    const adminId     = (currentUser as any)?.adminId ?? 0;
+    const userId      = this.authService.getCurrentUserId();
+
+    if (adminId && adminId !== 0) {
+      console.log('[RestaurantService] Using adminId for API calls:', adminId);
+      return adminId;
+    }
+
+    console.log('[RestaurantService] Using userId for API calls:', userId);
+    return userId;
   }
 
-  // ════════════════════════════════════════
   // GET ALL — GET /api/restaurants/{userId}/all
-  // ════════════════════════════════════════
-
   getAll(): Observable<Restaurant[]> {
     return this.http.get<Restaurant[]>(
-      `${this.BASE}/${this.userId}/all`
+      `${this.BASE}/${this.getApiUserId()}/all`
     );
   }
 
-  // ════════════════════════════════════════
   // GET BY ID — GET /api/restaurants/{userId}/get/{restaurantId}
-  // ════════════════════════════════════════
-
   getById(restaurantId: number): Observable<Restaurant> {
     return this.http.get<Restaurant>(
-      `${this.BASE}/${this.userId}/get/${restaurantId}`
+      `${this.BASE}/${this.getApiUserId()}/get/${restaurantId}`
     );
   }
 
-  // ════════════════════════════════════════
   // ADD — POST /api/restaurants/{userId}/add
-  // ════════════════════════════════════════
-
   add(payload: RestaurantPayload): Observable<Restaurant> {
     return this.http.post<Restaurant>(
-      `${this.BASE}/${this.userId}/add`,
+      `${this.BASE}/${this.getApiUserId()}/add`,
       payload
     );
   }
 
-  // ════════════════════════════════════════
   // UPDATE — PUT /api/restaurants/{userId}/update/{restaurantId}
-  // ════════════════════════════════════════
-
   update(restaurantId: number, payload: RestaurantPayload): Observable<Restaurant> {
     return this.http.put<Restaurant>(
-      `${this.BASE}/${this.userId}/update/${restaurantId}`,
+      `${this.BASE}/${this.getApiUserId()}/update/${restaurantId}`,
       payload
     );
   }
 
-  // ════════════════════════════════════════
   // DELETE — DELETE /api/restaurants/{userId}/delete/{restaurantId}
-  // Returns plain text
-  // ════════════════════════════════════════
-
   delete(restaurantId: number): Observable<string> {
     return this.http.delete(
-      `${this.BASE}/${this.userId}/delete/${restaurantId}`,
+      `${this.BASE}/${this.getApiUserId()}/delete/${restaurantId}`,
       { responseType: 'text' }
     );
   }

@@ -69,9 +69,30 @@ export interface Bill {
 })
 export class ViewBillsComponent implements OnInit, OnDestroy {
 
+  // ════════════════════════════════════════
+  // RESOLVE WHICH ID TO USE FOR API CALLS
+  //
+  // OWNER / ADMIN  → use their own userId
+  // MANAGER/WAITER → use adminId stored in ft_user if present,
+  //                  otherwise fall back to their own userId
+  // ════════════════════════════════════════
+
+  private getApiUserId(): number {
+    const currentUser = this.authService.getCurrentUser();
+    const adminId     = (currentUser as any)?.adminId ?? 0;
+    const userId      = this.authService.getCurrentUserId();
+
+    if (adminId && adminId !== 0) {
+      console.log('[ViewBills] Using adminId for API calls:', adminId);
+      return adminId;
+    }
+
+    console.log('[ViewBills] Using userId for API calls:', userId);
+    return userId;
+  }
+
   private get API_URL(): string {
-    const userId = this.authService.getCurrentUserId();
-    return `http://192.168.1.39:3000/bills/user/${userId}`;
+    return `http://192.168.1.39:3000/bills/user/${this.getApiUserId()}`;
   }
 
   // ── State ──
@@ -155,7 +176,7 @@ export class ViewBillsComponent implements OnInit, OnDestroy {
       : 0;
 
     // ── Voucher / discount ──
-    const voucher    = b.voucher ?? null;
+    const voucher     = b.voucher ?? null;
     const voucherPct  = voucher?.percentage ?? 0;
     const voucherCode = voucher?.code ?? '';
 

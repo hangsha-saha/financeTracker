@@ -43,6 +43,7 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
   // ── Customer info ──
   customerType:  string = 'dine-in';
   customerPhone: string = '';
+  phoneError:    string = '';   // ← validation error for phone
 
   // ── Payment ──
   paymentMethod: string = 'CASH';
@@ -52,11 +53,11 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
   discount: number = 0;
 
   // ── Voucher dropdown ──
-  selectedVoucherId: number          = 0;   // 0 = no voucher
-  appliedVoucher:    VoucherOption | null = null;
-  voucherStatus:     string          = '';
-  voucherStatusType: string          = '';
-  voucherDropdownOpen: boolean       = false;
+  selectedVoucherId:   number               = 0;
+  appliedVoucher:      VoucherOption | null = null;
+  voucherStatus:       string               = '';
+  voucherStatusType:   string               = '';
+  voucherDropdownOpen: boolean              = false;
 
   // ── Items ──
   items:          BillItem[] = [];
@@ -97,6 +98,34 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
     clearTimeout(this.toastTimer);
+  }
+
+  // ════════════════════════════════════════
+  // PHONE VALIDATION
+  // Accepts 10-digit Indian numbers,
+  // optionally prefixed with +91 or 0
+  // Field is optional — empty is allowed
+  // ════════════════════════════════════════
+
+  private isValidPhone(phone: string): boolean {
+    if (!phone.trim()) return true;   // optional field — blank is fine
+    const digits = phone.replace(/[\s\-\(\)]/g, '');
+    return /^(\+91|0)?[6-9]\d{9}$/.test(digits);
+  }
+
+  validatePhone(): void {
+    const phone = this.customerPhone.trim();
+    if (!phone) {
+      this.phoneError = '';
+      return;
+    }
+    this.phoneError = this.isValidPhone(phone)
+      ? ''
+      : 'Enter a valid 10-digit mobile number (starting with 6–9).';
+  }
+
+  clearPhoneError(): void {
+    this.phoneError = '';
   }
 
   // ════════════════════════════════════════
@@ -142,7 +171,6 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
   // ════════════════════════════════════════
 
   get activeVouchers(): VoucherOption[] {
-    // Loose check: API may return status as number 1, string "1", or boolean true
     return this.voucherList.filter(v => Number(v.status) === 1);
   }
 
@@ -150,7 +178,6 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
     this.voucherDropdownOpen = false;
 
     if (!v) {
-      // "No Voucher" selected
       this.appliedVoucher    = null;
       this.selectedVoucherId = 0;
       this.voucherStatus     = '';
@@ -159,7 +186,6 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Minimum amount check (client-side UX hint)
     if (this.subtotal > 0 && v.minAmount > 0 && this.subtotal < v.minAmount) {
       this.showToast(
         `Minimum order ₹${v.minAmount} required for voucher "${v.code}".`,
@@ -180,9 +206,7 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
     this.recalcTotals();
   }
 
-  removeVoucher(): void {
-    this.selectVoucher(null);
-  }
+  removeVoucher(): void { this.selectVoucher(null); }
 
   toggleVoucherDropdown(): void {
     this.voucherDropdownOpen = !this.voucherDropdownOpen;
@@ -197,6 +221,13 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
   // ════════════════════════════════════════
 
   generateBill(): void {
+    // Validate phone before proceeding
+    this.validatePhone();
+    if (this.phoneError) {
+      this.showToast('Please fix the errors before generating the bill.', 'danger');
+      return;
+    }
+
     this.isBillGenerated = true;
     if (this.items.length === 0) {
       this.addItem();
@@ -208,6 +239,13 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
   // ════════════════════════════════════════
 
   saveBill(): void {
+    // Re-validate phone on save as well
+    this.validatePhone();
+    if (this.phoneError) {
+      this.showToast('Please enter a valid phone number before saving.', 'danger');
+      return;
+    }
+
     const filled = this.filledItems;
 
     if (!this.isBillGenerated) {
@@ -281,7 +319,7 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
     }
 
     const item = items[index];
-    const sub = this.billService
+    const sub  = this.billService
       .addBillItem(billId, item.menuItemId, item.qty)
       .subscribe({
         next:  () => this.saveItemsSequentially(billId, items, index + 1),
@@ -337,9 +375,7 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
     this.recalcTotals();
   }
 
-  onSearchFocus(item: BillItem): void {
-    this.onSearchInput(item);
-  }
+  onSearchFocus(item: BillItem): void { this.onSearchInput(item); }
 
   onSearchBlur(item: BillItem): void {
     setTimeout(() => { item.dropdownOpen = false; }, 200);
@@ -365,7 +401,6 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
 
     this.voucherAmt = 0;
     if (this.appliedVoucher) {
-      // Percentage-based voucher from backend
       this.voucherAmt = ((this.subtotal + this.taxAmt) * this.appliedVoucher.percentage) / 100;
     }
 
@@ -381,6 +416,7 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
 
   openPrintConfirm(): void  { this.showPrintConfirm = true;  }
   closePrintConfirm(): void { this.showPrintConfirm = false; }
+
   doPrint(): void {
     this.showPrintConfirm = false;
     setTimeout(() => this.printBillOnly(), 300);
@@ -402,10 +438,7 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
-      font-size: 13px;
-      background: white;
-      color: #111;
-      padding: 24px;
+      font-size: 13px; background: white; color: #111; padding: 24px;
     }
     .bill-header { text-align: center; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid #ddd; }
     .bill-restaurant-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
@@ -413,65 +446,48 @@ export class GenerateBillComponent implements OnInit, OnDestroy {
     .bill-meta {
       display: grid; grid-template-columns: 1fr 1fr;
       gap: 8px; margin-bottom: 14px;
-      padding-bottom: 14px; border-bottom: 1px solid #ddd;
-      font-size: 11px;
+      padding-bottom: 14px; border-bottom: 1px solid #ddd; font-size: 11px;
     }
     .bill-meta-item { display: flex; flex-direction: column; }
     .bill-meta-label { font-weight: 600; color: #777; font-size: 10px; text-transform: uppercase; }
     .bill-item-header {
       display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
       gap: 6px; font-weight: 700; font-size: 11px;
-      border-bottom: 2px solid #111;
-      padding-bottom: 6px; margin-bottom: 6px;
+      border-bottom: 2px solid #111; padding-bottom: 6px; margin-bottom: 6px;
       text-transform: uppercase; letter-spacing: 0.4px;
     }
     .bill-item {
       display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 6px; padding: 5px 0;
-      border-bottom: 1px solid #eee; font-size: 12px;
+      gap: 6px; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 12px;
     }
     .bill-totals { margin-top: 14px; padding-top: 10px; border-top: 2px solid #111; }
-    .bill-total-row {
-      display: flex; justify-content: space-between;
-      padding: 4px 0; font-size: 12px;
-    }
+    .bill-total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
     .bill-total-row.final {
       font-size: 15px; font-weight: 700;
-      border-top: 1px solid #ddd;
-      margin-top: 8px; padding-top: 8px;
+      border-top: 1px solid #ddd; margin-top: 8px; padding-top: 8px;
     }
     .bill-footer {
       text-align: center; margin-top: 18px;
-      padding-top: 14px; border-top: 1px dashed #ddd;
-      font-size: 11px; color: #777;
+      padding-top: 14px; border-top: 1px dashed #ddd; font-size: 11px; color: #777;
     }
     @page { margin: 10mm; size: A4 portrait; }
   </style>
 </head>
-<body>
-  ${el.innerHTML}
-</body>
+<body>${el.innerHTML}</body>
 </html>`);
 
     printWin.document.close();
     printWin.focus();
-    setTimeout(() => {
-      printWin.print();
-      printWin.close();
-    }, 400);
+    setTimeout(() => { printWin.print(); printWin.close(); }, 400);
   }
 
   // ════════════════════════════════════════
   // HELPERS
   // ════════════════════════════════════════
 
-  inr(n: number): string {
-    return `₹${(n || 0).toFixed(2)}`;
-  }
+  inr(n: number): string { return `₹${(n || 0).toFixed(2)}`; }
 
-  get previewDate(): string {
-    return new Date().toLocaleDateString('en-IN');
-  }
+  get previewDate(): string { return new Date().toLocaleDateString('en-IN'); }
 
   get filledItems(): BillItem[] {
     return this.items.filter((i: BillItem) => i.name.trim() !== '' && i.price > 0);

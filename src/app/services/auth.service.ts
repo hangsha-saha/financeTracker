@@ -10,12 +10,13 @@ export interface AuthUser {
   role:      string | null;
   createdAt: string | null;
   password?: string;
+  adminId?:  number;   // ← add this
 }
-
 export interface LoginResponse {
-  token:   string;
-  message: string;
-  user:    AuthUser;
+  token:    string;
+  message:  string;
+  user:     AuthUser;
+  adminId?: number;   // ← present for MANAGER / WAITER, null for OWNER
 }
 
 export interface RegisterPayload {
@@ -59,8 +60,6 @@ export class AuthService {
       { username, password }
     ).pipe(
       tap(res => {
-        // Persist whatever the server gives back; login.component
-        // will call updateStoredUser() to normalise field names.
         this.persistSession(res.token, res.user);
         if (rememberMe) {
           localStorage.setItem(this.REMEMBER_KEY, username);
@@ -123,7 +122,6 @@ export class AuthService {
     localStorage.removeItem(this.REMEMBER_KEY);
     localStorage.removeItem(this.EMPLOYEE_ADMIN_KEY);
     localStorage.removeItem(this.RESOLVED_ROLE_KEY);
-    // Also clear profile override so next user gets a clean slate
     localStorage.removeItem('ftProfile');
   }
 
@@ -140,16 +138,12 @@ export class AuthService {
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
-
-      // ── Defensive normalisation on read ──
-      // Handles APIs that return username / name instead of userName
       if (!parsed.userName && (parsed.username || parsed.name)) {
         parsed.userName = parsed.username ?? parsed.name;
       }
       if (!parsed.userId && (parsed.id || parsed.user_id)) {
         parsed.userId = parsed.id ?? parsed.user_id;
       }
-
       return parsed as AuthUser;
     } catch {
       return null;
@@ -181,24 +175,17 @@ export class AuthService {
     return localStorage.getItem(this.REMEMBER_KEY) ?? '';
   }
 
-  /**
-   * Merges partial changes into the stored user.
-   * Also accepts a full AuthUser to completely replace the stored record —
-   * used by login.component after normalising the API response.
-   */
   updateStoredUser(updated: Partial<AuthUser>): void {
     const token   = this.getToken();
     const current = this.getCurrentUser();
 
     if (token) {
-      // If a full user object is supplied (has userId), replace entirely
       if ((updated as AuthUser).userId) {
         this.persistSession(token, updated as AuthUser);
       } else if (current) {
         this.persistSession(token, { ...current, ...updated });
       }
     } else if (current) {
-      // No token yet (edge case): still update local record
       const merged = (updated as AuthUser).userId
         ? (updated as AuthUser)
         : { ...current, ...updated };
@@ -208,10 +195,16 @@ export class AuthService {
 
   // ════════════════════════════════════════
   // EMPLOYEE ADMIN ID
+  // ft_employee_admin_id — set at login from res.adminId
+  // for MANAGER / WAITER only. Cleared for OWNER.
   // ════════════════════════════════════════
 
   setEmployeeAdminId(id: number): void {
     localStorage.setItem(this.EMPLOYEE_ADMIN_KEY, String(id));
+  }
+
+  clearEmployeeAdminId(): void {
+    localStorage.removeItem(this.EMPLOYEE_ADMIN_KEY);
   }
 
   getEmployeeAdminId(): number {
@@ -222,7 +215,33 @@ export class AuthService {
   }
 
   // ════════════════════════════════════════
+  // GET OWNER ID
+  //
+  // Use this in ALL services/components that
+  // fetch data belonging to the restaurant owner.
+  //
+  // OWNER / ADMIN → returns their own userId
+  // MANAGER / WAITER → returns adminId (ft_employee_admin_id)
+  //   stored at login from res.adminId
+  // ════════════════════════════════════════
+
+  getOwnerId(): number {
+    const role = (this.getResolvedRole() ?? '').toLowerCase();
+
+    if (role === 'admin' || role === 'owner') {
+      return this.getCurrentUserId();
+    }
+
+    // manager / waiter → use owner's adminId
+    const adminId = this.getEmployeeAdminId();
+    console.log('[AuthService] getOwnerId → role:', role, '→ adminId:', adminId);
+    return adminId;
+  }
+
+  // ════════════════════════════════════════
   // RESOLVED ROLE
+  // ft_resolved_role — set at login
+  // 'admin' for OWNER, 'manager' / 'waiter' for employees
   // ════════════════════════════════════════
 
   setResolvedRole(role: string): void {

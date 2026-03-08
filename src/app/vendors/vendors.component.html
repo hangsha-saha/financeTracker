@@ -124,35 +124,66 @@
 
     <div class="modal-body">
       <div class="form-row">
+
+        <!-- Vendor Name -->
         <div class="form-group">
           <label class="form-label">Vendor Name *</label>
           <input type="text" class="form-input"
-            placeholder="e.g. Fresh Farms" [(ngModel)]="aName">
+            [class.input-error]="aErr.name"
+            placeholder="e.g. Fresh Farms"
+            [(ngModel)]="aName"
+            (input)="clearAddErr('name')">
+          <span class="field-error" *ngIf="aErr.name">{{ aErr.name }}</span>
         </div>
+
+        <!-- Contact Number -->
         <div class="form-group">
           <label class="form-label">Contact Number *</label>
           <input type="tel" class="form-input"
-            placeholder="+91 98765 43210" [(ngModel)]="aContact">
+            [class.input-error]="aErr.contact"
+            placeholder="+91 98765 43210"
+            [(ngModel)]="aContact"
+            (input)="clearAddErr('contact')">
+          <span class="field-error" *ngIf="aErr.contact">{{ aErr.contact }}</span>
         </div>
+
       </div>
 
       <div class="form-row">
+
+        <!-- Email -->
         <div class="form-group">
           <label class="form-label">Email *</label>
           <input type="email" class="form-input"
-            placeholder="vendor@email.com" [(ngModel)]="aEmail">
+            [class.input-error]="aErr.email"
+            placeholder="vendor@email.com"
+            [(ngModel)]="aEmail"
+            (input)="clearAddErr('email')">
+          <span class="field-error" *ngIf="aErr.email">{{ aErr.email }}</span>
         </div>
+
+        <!-- Address -->
         <div class="form-group">
           <label class="form-label">Address / City *</label>
           <input type="text" class="form-input"
-            placeholder="City or full address" [(ngModel)]="aCity">
+            [class.input-error]="aErr.city"
+            placeholder="City or full address"
+            [(ngModel)]="aCity"
+            (input)="clearAddErr('city')">
+          <span class="field-error" *ngIf="aErr.city">{{ aErr.city }}</span>
         </div>
+
       </div>
 
+      <!-- Due Date -->
       <div class="form-row d-block">
         <div class="form-group">
           <label class="form-label">Due Date *</label>
-          <input type="date" class="form-input" [(ngModel)]="aDueDate">
+          <input type="date" class="form-input"
+            [class.input-error]="aErr.dueDate"
+            [(ngModel)]="aDueDate"
+            (change)="clearAddErr('dueDate')">
+          <span class="field-error" *ngIf="aErr.dueDate">{{ aErr.dueDate }}</span>
         </div>
       </div>
 
@@ -191,31 +222,62 @@
 
     <div class="modal-body">
       <div class="form-row">
+
+        <!-- Vendor Name -->
         <div class="form-group">
           <label class="form-label">Vendor Name *</label>
-          <input type="text" class="form-input" [(ngModel)]="eName">
+          <input type="text" class="form-input"
+            [class.input-error]="eErr.name"
+            [(ngModel)]="eName"
+            (input)="clearEditErr('name')">
+          <span class="field-error" *ngIf="eErr.name">{{ eErr.name }}</span>
         </div>
+
+        <!-- Contact Number -->
         <div class="form-group">
           <label class="form-label">Contact Number *</label>
-          <input type="tel" class="form-input" [(ngModel)]="eContact">
+          <input type="tel" class="form-input"
+            [class.input-error]="eErr.contact"
+            [(ngModel)]="eContact"
+            (input)="clearEditErr('contact')">
+          <span class="field-error" *ngIf="eErr.contact">{{ eErr.contact }}</span>
         </div>
+
       </div>
 
       <div class="form-row">
+
+        <!-- Email -->
         <div class="form-group">
           <label class="form-label">Email *</label>
-          <input type="email" class="form-input" [(ngModel)]="eEmail">
+          <input type="email" class="form-input"
+            [class.input-error]="eErr.email"
+            [(ngModel)]="eEmail"
+            (input)="clearEditErr('email')">
+          <span class="field-error" *ngIf="eErr.email">{{ eErr.email }}</span>
         </div>
+
+        <!-- Address -->
         <div class="form-group">
           <label class="form-label">Address / City *</label>
-          <input type="text" class="form-input" [(ngModel)]="eCity">
+          <input type="text" class="form-input"
+            [class.input-error]="eErr.city"
+            [(ngModel)]="eCity"
+            (input)="clearEditErr('city')">
+          <span class="field-error" *ngIf="eErr.city">{{ eErr.city }}</span>
         </div>
+
       </div>
 
+      <!-- Due Date -->
       <div class="form-row d-block">
         <div class="form-group">
           <label class="form-label">Due Date *</label>
-          <input type="date" class="form-input" [(ngModel)]="eDueDate">
+          <input type="date" class="form-input"
+            [class.input-error]="eErr.dueDate"
+            [(ngModel)]="eDueDate"
+            (change)="clearEditErr('dueDate')">
+          <span class="field-error" *ngIf="eErr.dueDate">{{ eErr.dueDate }}</span>
         </div>
       </div>
 

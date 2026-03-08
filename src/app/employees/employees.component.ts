@@ -61,6 +61,11 @@ export class EmployeesComponent implements OnInit, OnDestroy {
   errUsername: boolean = false;
   errPassword: boolean = false;
 
+  // ── Error messages ──
+  errPhoneMsg:    string = '';
+  errEmailMsg:    string = '';
+  errPasswordMsg: string = '';
+
   // ── Confirm delete ──
   showConfirm:     boolean       = false;
   confirmMsg:      string        = '';
@@ -79,6 +84,7 @@ export class EmployeesComponent implements OnInit, OnDestroy {
   errSalaryAmount:  boolean = false;
   errSalaryPaidOn:  boolean = false;
   errSalaryPayMode: boolean = false;
+
   // ── Salary duplicate check ──
   salaryAlreadyPaid: boolean = false;
   salaryPaidRecord:  SalaryRecord | null = null;
@@ -192,10 +198,13 @@ export class EmployeesComponent implements OnInit, OnDestroy {
   }
 
   clearErrors(): void {
-    this.errName     = false; this.errPhone    = false;
-    this.errEmail    = false; this.errJoining  = false;
-    this.errRole     = false; this.errSalary   = false;
-    this.errUsername = false; this.errPassword = false;
+    this.errName        = false; this.errPhone      = false;
+    this.errEmail       = false; this.errJoining    = false;
+    this.errRole        = false; this.errSalary     = false;
+    this.errUsername    = false; this.errPassword   = false;
+    this.errPhoneMsg    = '';
+    this.errEmailMsg    = '';
+    this.errPasswordMsg = '';
   }
 
   get needsCredentials(): boolean {
@@ -204,12 +213,43 @@ export class EmployeesComponent implements OnInit, OnDestroy {
 
   onRoleChange(): void {
     if (!this.needsCredentials) {
-      this.fUsername   = ''; this.fPassword   = '';
-      this.errUsername = false; this.errPassword = false;
+      this.fUsername      = ''; this.fPassword      = '';
+      this.errUsername    = false; this.errPassword  = false;
+      this.errPasswordMsg = '';
     }
   }
 
   togglePassword(): void { this.showPassword = !this.showPassword; }
+
+  // ── Password strength ──
+  get passwordStrength(): 'weak' | 'medium' | 'strong' | null {
+    const p = this.fPassword;
+    if (!p) return null;
+    const hasUpper   = /[A-Z]/.test(p);
+    const hasDigit   = /\d/.test(p);
+    const hasSpecial = /[^A-Za-z\d]/.test(p);
+    const score = [p.length >= 8, hasUpper, hasDigit, hasSpecial]
+                    .filter(Boolean).length;
+    if (score <= 2) return 'weak';
+    if (score === 3) return 'medium';
+    return 'strong';
+  }
+
+  // ── Validation helpers ──
+  private validatePhone(phone: string): boolean {
+    const digits = phone.trim().replace(/[\s\-().+]/g, '');
+    // Accept: 10-digit Indian mobile (6–9 start), or with 91 prefix
+    return /^(?:91)?[6-9]\d{9}$/.test(digits);
+  }
+
+  private validateEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  }
+
+  private validatePassword(password: string): boolean {
+    // Min 8 chars, 1 uppercase, 1 digit, 1 special character
+    return /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password);
+  }
 
   // ════════════════════════════════════════
   // SAVE — create or update
@@ -219,18 +259,47 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     this.clearErrors();
     let ok = true;
 
-    if (!this.fName.trim())  { this.errName    = true; ok = false; }
-    if (!this.fPhone.trim()) { this.errPhone   = true; ok = false; }
-    if (!this.fEmail.trim()) { this.errEmail   = true; ok = false; }
-    if (!this.fJoining)      { this.errJoining = true; ok = false; }
-    if (!this.fRole)         { this.errRole    = true; ok = false; }
-    if (this.fSalary === null || this.fSalary < 0)
-                             { this.errSalary  = true; ok = false; }
+    if (!this.fName.trim()) { this.errName = true; ok = false; }
+
+    // Phone validation
+    if (!this.fPhone.trim()) {
+      this.errPhone    = true;
+      this.errPhoneMsg = 'Phone number is required';
+      ok = false;
+    } else if (!this.validatePhone(this.fPhone)) {
+      this.errPhone    = true;
+      this.errPhoneMsg = 'Enter a valid 10-digit Indian mobile number (starts with 6–9)';
+      ok = false;
+    }
+
+    // Email validation
+    if (!this.fEmail.trim()) {
+      this.errEmail    = true;
+      this.errEmailMsg = 'Email is required';
+      ok = false;
+    } else if (!this.validateEmail(this.fEmail)) {
+      this.errEmail    = true;
+      this.errEmailMsg = 'Enter a valid email address (e.g. name@domain.com)';
+      ok = false;
+    }
+
+    if (!this.fJoining)  { this.errJoining = true; ok = false; }
+    if (!this.fRole)     { this.errRole    = true; ok = false; }
+    if (this.fSalary === null || this.fSalary < 0) { this.errSalary = true; ok = false; }
 
     // Credentials required on ADD for Manager / Waiter
     if (this.needsCredentials && !this.isEditing) {
       if (!this.fUsername.trim()) { this.errUsername = true; ok = false; }
-      if (!this.fPassword.trim()) { this.errPassword = true; ok = false; }
+
+      if (!this.fPassword.trim()) {
+        this.errPassword    = true;
+        this.errPasswordMsg = 'Password is required';
+        ok = false;
+      } else if (!this.validatePassword(this.fPassword)) {
+        this.errPassword    = true;
+        this.errPasswordMsg = 'Min 8 chars, 1 uppercase, 1 number & 1 special character required';
+        ok = false;
+      }
     }
 
     if (!ok) return;
@@ -255,7 +324,6 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     };
 
     if (this.isEditing && this.editingId !== null) {
-      // ── UPDATE — employee server only ──
       const sub = this.employeesService
         .update(this.editingId, payload)
         .subscribe({
@@ -275,50 +343,29 @@ export class EmployeesComponent implements OnInit, OnDestroy {
       this.subs.push(sub);
 
     } else {
-      // ── CREATE ──
-      // Manager/Waiter → registers on 192.168.1.39:3000 THEN inserts on 192.168.1.21:8080
-      // Others         → inserts directly on 192.168.1.21:8080
       const sub = this.employeesService.create(payload).subscribe({
         next: created => {
           this.employees.push(created);
           this.applyFilters();
-
           const credMsg = this.needsCredentials
             ? ` Login credentials created for ${created.role}.`
             : '';
-
-          this.showToast(
-            `"${created.name}" added successfully!${credMsg}`,
-            'success'
-          );
+          this.showToast(`"${created.name}" added successfully!${credMsg}`, 'success');
           this.isSaving = false;
           this.closeModal();
         },
         error: (err) => {
           console.error('Save employee failed — status:', err.status);
           console.error('Save employee failed — body:',   err.error);
-
           if (err.status === 409) {
-            this.showToast(
-              'Username already exists. Please choose a different username.',
-              'danger'
-            );
+            this.showToast('Username already exists. Please choose a different username.', 'danger');
             this.errUsername = true;
           } else if (err.status === 400) {
-            this.showToast(
-              'Invalid data. Please check all fields and try again.',
-              'danger'
-            );
+            this.showToast('Invalid data. Please check all fields and try again.', 'danger');
           } else if (err.status === 0) {
-            this.showToast(
-              'Cannot reach server. Please check your network.',
-              'danger'
-            );
+            this.showToast('Cannot reach server. Please check your network.', 'danger');
           } else {
-            this.showToast(
-              err.error?.message || 'Failed to add employee. Please try again.',
-              'danger'
-            );
+            this.showToast(err.error?.message || 'Failed to add employee. Please try again.', 'danger');
           }
           this.isSaving = false;
         }
@@ -348,16 +395,11 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     if (this.pendingDeleteId === null) return;
     this.isDeleting = true;
 
-    const empName = this.employees.find(
-      e => e.id === this.pendingDeleteId
-    )?.name;
+    const empName = this.employees.find(e => e.id === this.pendingDeleteId)?.name;
 
     const sub = this.employeesService.delete(this.pendingDeleteId).subscribe({
       next: (msg: any) => {
-        console.log('Delete success:', msg);
-        this.employees       = this.employees.filter(
-          e => e.id !== this.pendingDeleteId
-        );
+        this.employees       = this.employees.filter(e => e.id !== this.pendingDeleteId);
         this.pendingDeleteId = null;
         this.showConfirm     = false;
         this.isDeleting      = false;
@@ -382,46 +424,41 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     const emp = this.employees.find(e => e.id === id);
     if (!emp) return;
 
-    this.salaryEmpId      = emp.id;
-    this.salaryEmpName    = emp.name;
-    this.salaryEmpRole    = emp.role;
-    this.salaryAmount     = emp.salary;
-    this.salaryPaidOn     = new Date().toISOString().split('T')[0];
-    this.salaryPayMode    = '';
-    this.isSavingSalary   = false;
+    this.salaryEmpId       = emp.id;
+    this.salaryEmpName     = emp.name;
+    this.salaryEmpRole     = emp.role;
+    this.salaryAmount      = emp.salary;
+    this.salaryPaidOn      = new Date().toISOString().split('T')[0];
+    this.salaryPayMode     = '';
+    this.isSavingSalary    = false;
     this.salaryAlreadyPaid = false;
     this.salaryPaidRecord  = null;
     this.clearSalaryErrors();
-    this.showSalaryModal  = true;
+    this.showSalaryModal   = true;
 
-    // Check if salary already paid this month
     this.checkSalaryAlreadyPaid(emp.id);
   }
 
   private checkSalaryAlreadyPaid(employeeId: number): void {
     this.isCheckingSalary = true;
     const now   = new Date();
-    const month = now.getMonth();   // 0-indexed
+    const month = now.getMonth();
     const year  = now.getFullYear();
 
     const sub = this.employeesService.getSalariesByEmployee(employeeId).subscribe({
       next: (records) => {
         this.isCheckingSalary = false;
-
-        // Find any record where paymentDate falls in current month + year
         const duplicate = records.find(r => {
           if (!r.paymentDate) return false;
           const d = new Date(r.paymentDate + 'T00:00:00');
           return d.getMonth() === month && d.getFullYear() === year;
         });
-
         if (duplicate) {
           this.salaryAlreadyPaid = true;
           this.salaryPaidRecord  = duplicate;
         }
       },
       error: (err) => {
-        // If check fails, allow payment to proceed (fail open)
         console.warn('[Salary] Could not verify payment history:', err);
         this.isCheckingSalary = false;
       }
@@ -445,7 +482,6 @@ export class EmployeesComponent implements OnInit, OnDestroy {
   }
 
   saveSalary(): void {
-    // Block if already paid this month
     if (this.salaryAlreadyPaid) {
       this.showToast(
         `Salary already paid for ${this.currentMonthLabel()} to "${this.salaryEmpName}".`,
@@ -469,20 +505,12 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     this.isSavingSalary = true;
 
     const sub = this.employeesService
-      .paySalary(
-        this.salaryEmpId!,
-        this.salaryAmount!,
-        this.salaryPaidOn,
-        this.salaryPayMode
-      )
+      .paySalary(this.salaryEmpId!, this.salaryAmount!, this.salaryPaidOn, this.salaryPayMode)
       .subscribe({
         next: (record) => {
           const idx = this.employees.findIndex(e => e.id === this.salaryEmpId);
           if (idx > -1) {
-            this.employees[idx] = {
-              ...this.employees[idx],
-              salary: this.salaryAmount!
-            };
+            this.employees[idx] = { ...this.employees[idx], salary: this.salaryAmount! };
           }
           this.applyFilters();
           this.showToast(
@@ -501,7 +529,6 @@ export class EmployeesComponent implements OnInit, OnDestroy {
     this.subs.push(sub);
   }
 
-  // Helper — "March 2026" etc.
   currentMonthLabel(): string {
     return new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
   }

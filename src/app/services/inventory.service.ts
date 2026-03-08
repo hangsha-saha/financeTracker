@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from './auth.service';
 
-// ── API response structures ──
 export interface InventoryApiItem {
   inventoryId:     number;
   itemName:        string;
@@ -60,83 +59,79 @@ export class InventoryService {
     private authService: AuthService
   ) {}
 
-  // ── Always reads fresh from AuthService ──
-  private get adminId(): number {
-    return this.authService.getCurrentUserId();
+  // ════════════════════════════════════════
+  // RESOLVE WHICH ID TO USE FOR API CALLS
+  //
+  // OWNER / ADMIN  → use their own userId
+  // MANAGER/WAITER → use adminId stored in ft_user if present,
+  //                  otherwise fall back to their own userId
+  // ════════════════════════════════════════
+
+  private getApiUserId(): number {
+    const currentUser = this.authService.getCurrentUser();
+    const adminId     = (currentUser as any)?.adminId ?? 0;
+    const userId      = this.authService.getCurrentUserId();
+
+    if (adminId && adminId !== 0) {
+      console.log('[InventoryService] Using adminId for API calls:', adminId);
+      return adminId;
+    }
+
+    console.log('[InventoryService] Using userId for API calls:', userId);
+    return userId;
   }
 
-  // ════════════════════════════════════════
   // GET ALL — GET /inventory/{userId}/all
-  // ════════════════════════════════════════
-
   getAll(): Observable<InventoryApiItem[]> {
     return this.http.get<InventoryApiItem[]>(
-      `${this.BASE}/${this.adminId}/all`
+      `${this.BASE}/${this.getApiUserId()}/all`
     );
   }
 
-  // ════════════════════════════════════════
   // GET BY ID — GET /inventory/{userId}/get/{inventoryId}
-  // ════════════════════════════════════════
-
   getById(inventoryId: number): Observable<InventoryApiItem> {
     return this.http.get<InventoryApiItem>(
-      `${this.BASE}/${this.adminId}/get/${inventoryId}`
+      `${this.BASE}/${this.getApiUserId()}/get/${inventoryId}`
     );
   }
 
-  // ════════════════════════════════════════
   // GET BY VENDOR — GET /inventory/{userId}/vendor/{vendorId}
-  // ════════════════════════════════════════
-
   getByVendor(vendorId: number): Observable<InventoryApiItem[]> {
     return this.http.get<InventoryApiItem[]>(
-      `${this.BASE}/${this.adminId}/vendor/${vendorId}`
+      `${this.BASE}/${this.getApiUserId()}/vendor/${vendorId}`
     );
   }
 
-  // ════════════════════════════════════════
   // CREATE — POST /inventory/{userId}/add
-  // ════════════════════════════════════════
-
   add(payload: InventoryAddPayload): Observable<InventoryApiItem> {
     return this.http.post<InventoryApiItem>(
-      `${this.BASE}/${this.adminId}/add`,
+      `${this.BASE}/${this.getApiUserId()}/add`,
       payload
     );
   }
 
-  // ════════════════════════════════════════
   // UPDATE — PUT /inventory/{userId}/update/{inventoryId}
-  // ════════════════════════════════════════
-
   update(
     inventoryId: number,
     payload:     InventoryUpdatePayload
   ): Observable<InventoryApiItem> {
     return this.http.put<InventoryApiItem>(
-      `${this.BASE}/${this.adminId}/update/${inventoryId}`,
+      `${this.BASE}/${this.getApiUserId()}/update/${inventoryId}`,
       payload
     );
   }
 
-  // ════════════════════════════════════════
   // DELETE — DELETE /inventory/{userId}/delete/{inventoryId}
-  // ════════════════════════════════════════
-
   delete(inventoryId: number): Observable<{ success: boolean; message: string }> {
     return this.http.delete<{ success: boolean; message: string }>(
-      `${this.BASE}/${this.adminId}/delete/${inventoryId}`
+      `${this.BASE}/${this.getApiUserId()}/delete/${inventoryId}`
     );
   }
 
-  // ════════════════════════════════════════
   // VENDOR NAMES — GET /vendors/{userId}/names
-  // ════════════════════════════════════════
-
   getVendorNames(): Observable<VendorNameItem[]> {
     return this.http.get<VendorNameItem[]>(
-      `${this.VEND_BASE}/${this.adminId}/names`
+      `${this.VEND_BASE}/${this.getApiUserId()}/names`
     );
   }
 }

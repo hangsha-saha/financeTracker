@@ -3,27 +3,21 @@ import { Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../services/auth.service';
 
-// ─────────────────────────────────────────────
-//  Internal model used everywhere in the view
-// ─────────────────────────────────────────────
 export interface Expense {
   id:           number;
-  date:         string;   // stored as "YYYY-MM-DD" internally
+  date:         string;
   name:         string;
   category:     string;
   amount:       number;
   description?: string;
 }
 
-// ─────────────────────────────────────────────
-//  Shape the REST API sends / receives
-// ─────────────────────────────────────────────
 interface ApiExpense {
   expenseId:   number;
   expenseName: string;
   expenseType: string;
   amount:      number;
-  expenseDate: string;   // "DD-MM-YYYY"
+  expenseDate: string;
   description: string;
 }
 
@@ -31,7 +25,7 @@ interface ApiExpensePayload {
   expenseName: string;
   expenseType: string;
   amount:      number;
-  expenseDate: string;   // "DD-MM-YYYY"
+  expenseDate: string;
   description: string;
 }
 
@@ -42,47 +36,65 @@ interface ApiExpensePayload {
 })
 export class ExpenseComponent implements OnInit {
 
-  // ── API endpoints ──────────────────────────────────────────────────────────
-  private get USER_ID(): number {
-    return this.authService.getCurrentUserId();
+  // ════════════════════════════════════════
+  // RESOLVE WHICH ID TO USE FOR API CALLS
+  //
+  // OWNER / ADMIN  → use their own userId
+  // MANAGER/WAITER → use adminId stored in ft_user if present,
+  //                  otherwise fall back to their own userId
+  // ════════════════════════════════════════
+
+  private getApiUserId(): number {
+    const currentUser = this.authService.getCurrentUser();
+    const adminId     = (currentUser as any)?.adminId ?? 0;
+    const userId      = this.authService.getCurrentUserId();
+
+    if (adminId && adminId !== 0) {
+      console.log('[Expense] Using adminId for API calls:', adminId);
+      return adminId;
+    }
+
+    console.log('[Expense] Using userId for API calls:', userId);
+    return userId;
   }
+
   private readonly BASE_URL = 'http://192.168.1.39:3000/expenses';
 
-  private get FETCH_URL()         { return `${this.BASE_URL}/user/${this.USER_ID}`; }  // GET  all
-  private get CREATE_URL()        { return `${this.BASE_URL}/${this.USER_ID}`;      }  // POST new
-  private editUrl(id: number)     { return `${this.BASE_URL}/${id}`;               }  // PUT
-  private deleteUrl(id: number)   { return `${this.BASE_URL}/${id}`;               }  // DELETE
+  private get FETCH_URL()       { return `${this.BASE_URL}/user/${this.getApiUserId()}`; }
+  private get CREATE_URL()      { return `${this.BASE_URL}/${this.getApiUserId()}`;      }
+  private editUrl(id: number)   { return `${this.BASE_URL}/${id}`;                      }
+  private deleteUrl(id: number) { return `${this.BASE_URL}/${id}`;                      }
 
   private readonly JSON_HEADERS = new HttpHeaders({ 'Content-Type': 'application/json' });
 
-  // ── Page state ─────────────────────────────────────────────────────────────
+  // ── Page state ──
   isLoading:  boolean = false;
   loadError:  string  = '';
   isSaving:   boolean = false;
   isDeleting: boolean = false;
 
-  // ── Sidebar ────────────────────────────────────────────────────────────────
+  // ── Sidebar ──
   sidebarName:    string = 'Admin User';
   sidebarRole:    string = 'Admin';
   sidebarInitial: string = 'A';
   sidebarEmail:   string = 'admin@restaurant.com';
 
-  // ── Data ───────────────────────────────────────────────────────────────────
+  // ── Data ──
   expenses: Expense[] = [];
 
-  // ── Filters ────────────────────────────────────────────────────────────────
+  // ── Filters ──
   categoryFilter: string    = '';
   searchInput:    string    = '';
   filtered:       Expense[] = [];
 
-  // ── Pagination ─────────────────────────────────────────────────────────────
+  // ── Pagination ──
   page:                number = 1;
   readonly ROWS_PER_PAGE      = 10;
 
-  // ── Summary ────────────────────────────────────────────────────────────────
+  // ── Summary ──
   monthlyTotal: number = 0;
 
-  // ── Add / Edit Modal ───────────────────────────────────────────────────────
+  // ── Add / Edit Modal ──
   showModal:   boolean       = false;
   isEditing:   boolean       = false;
   editingId:   number | null = null;
@@ -99,20 +111,19 @@ export class ExpenseComponent implements OnInit {
   errCategory: boolean = false;
   errAmount:   boolean = false;
 
-  // ── Confirm Delete ─────────────────────────────────────────────────────────
+  // ── Confirm Delete ──
   showConfirm:     boolean       = false;
   confirmMsg:      string        = '';
   pendingDeleteId: number | null = null;
 
-  // ── Toast ──────────────────────────────────────────────────────────────────
+  // ── Toast ──
   toastMsg:     string  = '';
   toastType:    string  = '';
   toastVisible: boolean = false;
   private toastTimer: any;
 
-  // ── Static lookups ─────────────────────────────────────────────────────────
   readonly CATEGORIES = [
-    'Rent', 'Utilities', 'Raw Materials', 'Salaries',
+    'Rent', 'Utilities', 'Raw Materials',
     'Marketing', 'Supplies', 'Maintenance', 'Variable', 'Fixed', 'Other'
   ];
 
@@ -120,7 +131,6 @@ export class ExpenseComponent implements OnInit {
     'Rent':          'badge-rent',
     'Utilities':     'badge-utilities',
     'Raw Materials': 'badge-raw-materials',
-    'Salaries':      'badge-salaries',
     'Marketing':     'badge-marketing',
     'Supplies':      'badge-supplies',
     'Maintenance':   'badge-maintenance',
@@ -129,7 +139,6 @@ export class ExpenseComponent implements OnInit {
     'Other':         'badge-rent',
   };
 
-  // ──────────────────────────────────────────────────────────────────────────
   constructor(
     private router:      Router,
     private http:        HttpClient,
@@ -142,9 +151,7 @@ export class ExpenseComponent implements OnInit {
     this.fetchExpenses();
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  GET — load all expenses
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── GET ──
   fetchExpenses(): void {
     this.isLoading = true;
     this.loadError = '';
@@ -166,9 +173,7 @@ export class ExpenseComponent implements OnInit {
 
   retryFetch(): void { this.fetchExpenses(); }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  POST — create new expense
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── POST ──
   private createExpense(): void {
     const payload: ApiExpensePayload = {
       expenseName: this.fName.trim(),
@@ -197,9 +202,7 @@ export class ExpenseComponent implements OnInit {
       });
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  PUT — update existing expense
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── PUT ──
   private updateExpense(): void {
     const payload: ApiExpensePayload = {
       expenseName: this.fName.trim(),
@@ -233,18 +236,16 @@ export class ExpenseComponent implements OnInit {
       });
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  DELETE — remove expense
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── DELETE ──
   doDelete(): void {
     if (this.pendingDeleteId === null) return;
 
-    const idToDelete = this.pendingDeleteId;   // ← save it first
+    const idToDelete = this.pendingDeleteId;
     const expName    = this.expenses.find(e => e.id === idToDelete)?.name ?? '';
 
-    this.isDeleting  = true;
-    this.showConfirm = false;
-    this.pendingDeleteId = null;               // ← clear immediately
+    this.isDeleting      = true;
+    this.showConfirm     = false;
+    this.pendingDeleteId = null;
 
     this.http.delete(this.deleteUrl(idToDelete), { responseType: 'text' }).subscribe({
       next: () => {
@@ -261,9 +262,7 @@ export class ExpenseComponent implements OnInit {
     });
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Modal helpers
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Modal ──
   openAddModal(): void {
     this.isEditing  = false;
     this.editingId  = null;
@@ -294,7 +293,6 @@ export class ExpenseComponent implements OnInit {
     this.clearForm();
   }
 
-  /** Validate → dispatch to createExpense() or updateExpense() */
   saveExpense(): void {
     this.clearErrors();
     let valid = true;
@@ -311,9 +309,7 @@ export class ExpenseComponent implements OnInit {
       : this.createExpense();
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Delete confirmation dialog
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Confirm Delete ──
   confirmDelete(id: number): void {
     const exp = this.expenses.find(e => e.id === id);
     if (!exp) return;
@@ -327,9 +323,7 @@ export class ExpenseComponent implements OnInit {
     this.pendingDeleteId = null;
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Filters & pagination
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Filters & Pagination ──
   applyFilters(): void {
     const cat    = this.categoryFilter.toLowerCase();
     const search = this.searchInput.toLowerCase().trim();
@@ -364,11 +358,7 @@ export class ExpenseComponent implements OnInit {
   prevPage(): void { if (this.page > 1) this.page--; }
   nextPage(): void { if (this.page < this.totalPages) this.page++; }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Date conversion helpers
-  // ══════════════════════════════════════════════════════════════════════════
-
-  /** "DD-MM-YYYY" → "YYYY-MM-DD"  (API → HTML input) */
+  // ── Date helpers ──
   private convertDate(dateStr: string): string {
     if (!dateStr) return '';
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
@@ -377,7 +367,6 @@ export class ExpenseComponent implements OnInit {
     return dateStr;
   }
 
-  /** "YYYY-MM-DD" → "DD-MM-YYYY"  (HTML input → API payload) */
   private toApiDate(dateStr: string): string {
     if (!dateStr) return '';
     if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
@@ -386,7 +375,6 @@ export class ExpenseComponent implements OnInit {
     return dateStr;
   }
 
-  /** Maps an API response object → internal Expense model */
   private mapApiExpense(item: ApiExpense): Expense {
     return {
       id:          item.expenseId,
@@ -398,13 +386,9 @@ export class ExpenseComponent implements OnInit {
     };
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Misc helpers
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Misc ──
   todayString(): string { return new Date().toISOString().split('T')[0]; }
-
   inr(n: number): string { return '₹' + Number(n).toLocaleString('en-IN'); }
-
   getBadgeClass(cat: string): string { return this.BADGE_CLASS[cat] ?? 'badge-rent'; }
 
   clearForm(): void {
@@ -417,9 +401,7 @@ export class ExpenseComponent implements OnInit {
     this.errDate = this.errName = this.errCategory = this.errAmount = false;
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Sidebar profile
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Sidebar ──
   loadSidebarProfile(): void {
     try {
       const raw = localStorage.getItem('ftProfile');
@@ -436,9 +418,7 @@ export class ExpenseComponent implements OnInit {
     } catch (_) {}
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Navigation
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Navigation ──
   readonly BUILT_PAGES = [
     'dashboard', 'login', 'inventory', 'income', 'expense', 'menu', 'generate-bill'
   ];
@@ -451,9 +431,7 @@ export class ExpenseComponent implements OnInit {
     if (confirm('Are you sure you want to logout?')) this.router.navigate(['/login']);
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  Toast
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Toast ──
   showToast(msg: string, type: 'success' | 'danger' | 'info' = 'info'): void {
     this.toastMsg     = msg;
     this.toastType    = type;

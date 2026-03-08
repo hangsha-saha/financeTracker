@@ -65,14 +65,12 @@
 
                 <td>
                   {{ emp.role }}
-                  <!-- 🔑 only for Manager / Waiter -->
                   <span class="cred-badge"
                     *ngIf="hasCredentials(emp)"
                     title="Has login credentials">🔑</span>
                 </td>
 
                 <td>{{ emp.phone }}</td>
-
                 <td>{{ fmtDate(emp.joining) }}</td>
 
                 <td>
@@ -152,7 +150,7 @@
             [class.input-error]="errPhone"
             placeholder="+91 98765 43210"
             [(ngModel)]="fPhone">
-          <span class="form-error" *ngIf="errPhone">Phone is required</span>
+          <span class="form-error" *ngIf="errPhone">{{ errPhoneMsg }}</span>
         </div>
       </div>
 
@@ -164,7 +162,7 @@
             [class.input-error]="errEmail"
             placeholder="employee@email.com"
             [(ngModel)]="fEmail">
-          <span class="form-error" *ngIf="errEmail">Email is required</span>
+          <span class="form-error" *ngIf="errEmail">{{ errEmailMsg }}</span>
         </div>
         <div class="form-group">
           <label class="form-label">Date of Joining *</label>
@@ -172,9 +170,7 @@
             [class.input-error]="errJoining"
             [(ngModel)]="fJoining"
             [attr.readonly]="isEditing ? '' : null">
-          <span class="form-error" *ngIf="errJoining">
-            Joining date is required
-          </span>
+          <span class="form-error" *ngIf="errJoining">Joining date is required</span>
         </div>
       </div>
 
@@ -197,9 +193,7 @@
             [class.input-error]="errSalary"
             placeholder="0" min="0" step="0.01"
             [(ngModel)]="fSalary">
-          <span class="form-error" *ngIf="errSalary">
-            Valid salary is required
-          </span>
+          <span class="form-error" *ngIf="errSalary">Valid salary is required</span>
         </div>
       </div>
 
@@ -222,9 +216,7 @@
             placeholder="e.g. john.doe"
             [(ngModel)]="fUsername"
             autocomplete="new-password">
-          <span class="form-error" *ngIf="errUsername">
-            Username is required
-          </span>
+          <span class="form-error" *ngIf="errUsername">Username is required</span>
         </div>
 
         <div class="form-group">
@@ -258,9 +250,22 @@
               </svg>
             </button>
           </div>
-          <span class="form-error" *ngIf="errPassword">
-            Password is required
-          </span>
+
+          <!-- Password strength indicator -->
+          <div class="pw-strength" *ngIf="fPassword && needsCredentials && !isEditing">
+            <div class="pw-strength-bar">
+              <div class="pw-strength-fill"
+                [class.weak]="passwordStrength === 'weak'"
+                [class.medium]="passwordStrength === 'medium'"
+                [class.strong]="passwordStrength === 'strong'">
+              </div>
+            </div>
+            <span class="pw-strength-label {{ passwordStrength }}">
+              {{ passwordStrength | titlecase }}
+            </span>
+          </div>
+
+          <span class="form-error" *ngIf="errPassword">{{ errPasswordMsg }}</span>
         </div>
       </div>
 
@@ -274,9 +279,7 @@
           [disabled]="isSaving" (click)="closeModal()">Cancel</button>
         <button class="btn btn-primary"
           [disabled]="isSaving" (click)="saveEmployee()">
-          <span *ngIf="!isSaving">
-            {{ isEditing ? 'Save Changes' : 'Add Employee' }}
-          </span>
+          <span *ngIf="!isSaving">{{ isEditing ? 'Save Changes' : 'Add Employee' }}</span>
           <span *ngIf="isSaving">Saving...</span>
         </button>
       </div>
@@ -304,8 +307,7 @@
 </div>
 
 <!-- ══════ SALARY PAYMENT MODAL ══════ -->
-<div class="modal-overlay" [class.active]="showSalaryModal"
-  (click)="closeSalaryModal()">
+<div class="modal-overlay" [class.active]="showSalaryModal" (click)="closeSalaryModal()">
   <div class="modal-content" (click)="$event.stopPropagation()">
 
     <div class="modal-header">
@@ -315,9 +317,7 @@
         </div>
         <div>
           <h2 class="modal-title">Pay Salary</h2>
-          <div class="salary-emp-meta">
-            {{ salaryEmpName }} · {{ salaryEmpRole }}
-          </div>
+          <div class="salary-emp-meta">{{ salaryEmpName }} · {{ salaryEmpRole }}</div>
         </div>
       </div>
       <button class="modal-close" (click)="closeSalaryModal()">✕</button>
@@ -325,13 +325,13 @@
 
     <div class="modal-body">
 
-      <!-- ── Checking spinner ── -->
+      <!-- Checking spinner -->
       <div class="salary-check-loading" *ngIf="isCheckingSalary">
         <div class="spinner-sm"></div>
         <span>Checking payment history...</span>
       </div>
 
-      <!-- ── Already paid warning ── -->
+      <!-- Already paid warning -->
       <div class="salary-already-paid" *ngIf="!isCheckingSalary && salaryAlreadyPaid">
         <div class="sap-icon">⚠️</div>
         <div class="sap-content">
@@ -344,18 +344,14 @@
         </div>
       </div>
 
-      <!-- ── Payment form — hidden if already paid ── -->
+      <!-- Payment form -->
       <ng-container *ngIf="!isCheckingSalary && !salaryAlreadyPaid">
 
-        <!-- Salary banner -->
         <div class="salary-amount-banner">
           <span class="sab-label">Monthly Salary</span>
-          <span class="sab-value">
-            ₹{{ salaryAmount?.toLocaleString('en-IN') }}
-          </span>
+          <span class="sab-value">₹{{ salaryAmount?.toLocaleString('en-IN') }}</span>
         </div>
 
-        <!-- Row: Amount + Paid On -->
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Salary Amount (₹) *</label>
@@ -363,22 +359,17 @@
               [class.input-error]="errSalaryAmount"
               placeholder="Enter amount" min="0"
               [(ngModel)]="salaryAmount">
-            <span class="form-error" *ngIf="errSalaryAmount">
-              Valid amount required
-            </span>
+            <span class="form-error" *ngIf="errSalaryAmount">Valid amount required</span>
           </div>
           <div class="form-group">
             <label class="form-label">Payment Date *</label>
             <input type="date" class="form-input"
               [class.input-error]="errSalaryPaidOn"
               [(ngModel)]="salaryPaidOn">
-            <span class="form-error" *ngIf="errSalaryPaidOn">
-              Date is required
-            </span>
+            <span class="form-error" *ngIf="errSalaryPaidOn">Date is required</span>
           </div>
         </div>
 
-        <!-- Payment Mode -->
         <div class="form-group">
           <label class="form-label">Payment Mode *</label>
           <select class="form-select"
@@ -387,9 +378,7 @@
             <option value="">Select Mode</option>
             <option *ngFor="let m of PAY_MODES" [value]="m">{{ m }}</option>
           </select>
-          <span class="form-error" *ngIf="errSalaryPayMode">
-            Payment mode required
-          </span>
+          <span class="form-error" *ngIf="errSalaryPayMode">Payment mode required</span>
         </div>
 
       </ng-container>
@@ -401,8 +390,6 @@
         <button class="btn btn-secondary"
           [disabled]="isSavingSalary || isCheckingSalary"
           (click)="closeSalaryModal()">Close</button>
-
-        <!-- Show pay button only if not already paid and not checking -->
         <button class="btn btn-salary"
           *ngIf="!salaryAlreadyPaid && !isCheckingSalary"
           [disabled]="isSavingSalary"
@@ -415,6 +402,7 @@
 
   </div>
 </div>
+
 <!-- ══════ TOAST ══════ -->
 <div class="toast"
   [class.show]="toastVisible"

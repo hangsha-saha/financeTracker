@@ -60,12 +60,19 @@
           </div>
 
           <div class="form-row">
+
+            <!-- Phone with validation -->
             <div class="form-group">
-              <label class="form-label">Phone</label>
+              <label class="form-label">Phone <span style="color:#999;font-weight:400;font-size:12px;">(optional)</span></label>
               <input type="tel" class="form-input"
+                [class.input-error]="phoneError"
                 [(ngModel)]="customerPhone"
-                placeholder="+91 98765 43210">
+                placeholder="+91 98765 43210"
+                (input)="validatePhone()"
+                (blur)="validatePhone()">
+              <span class="field-error" *ngIf="phoneError">{{ phoneError }}</span>
             </div>
+
             <!-- Payment Method -->
             <div class="form-group">
               <label class="form-label">Payment Method</label>
@@ -87,6 +94,7 @@
                 </button>
               </div>
             </div>
+
           </div>
 
           <!-- Generate Bill Button -->
@@ -174,13 +182,11 @@
               <div class="form-group">
                 <label class="form-label">Voucher</label>
 
-                <!-- No vouchers available -->
                 <div class="voucher-empty" *ngIf="activeVouchers.length === 0 && !appliedVoucher">
                   <span>🏷️ No active vouchers available.</span>
                   <small>Add vouchers from your Profile page.</small>
                 </div>
 
-                <!-- Voucher picker -->
                 <div class="voucher-picker" *ngIf="activeVouchers.length > 0 || appliedVoucher">
                   <div class="voucher-select-wrapper">
                     <button
@@ -201,12 +207,10 @@
                     </button>
 
                     <div class="voucher-dropdown" [class.open]="voucherDropdownOpen">
-                      <!-- None option -->
                       <div class="voucher-option voucher-option-none"
                         (mousedown)="selectVoucher(null)">
                         <span>🚫 No Voucher</span>
                       </div>
-                      <!-- Voucher list -->
                       <div class="voucher-option"
                         *ngFor="let v of activeVouchers"
                         [class.selected]="appliedVoucher?.id === v.id"
@@ -223,7 +227,6 @@
                     </div>
                   </div>
 
-                  <!-- Remove button when applied -->
                   <button class="voucher-remove-btn"
                     *ngIf="appliedVoucher"
                     (click)="removeVoucher()">
@@ -231,7 +234,6 @@
                   </button>
                 </div>
 
-                <!-- Status message -->
                 <div class="voucher-status"
                   *ngIf="voucherStatus"
                   [ngClass]="voucherStatusType">
@@ -239,23 +241,17 @@
                 </div>
               </div>
 
-              <!-- Tax + Discount -->
-              <div class="form-row">
+              <!-- Tax -->
+              <div class="form-row d-block">
                 <div class="form-group">
                   <label class="form-label">Tax (%)</label>
                   <input type="number" class="form-input"
                     [(ngModel)]="taxPct"
                     (input)="recalcTotals()">
                 </div>
-                <div class="form-group">
-                  <label class="form-label">Discount (₹)</label>
-                  <input type="number" class="form-input"
-                    [(ngModel)]="discount"
-                    (input)="recalcTotals()">
-                </div>
               </div>
 
-              <!-- Subtotal / Tax / Voucher / Grand Total -->
+              <!-- Totals breakdown -->
               <div class="totals-breakdown">
                 <div class="total-row">
                   <span>Subtotal</span>

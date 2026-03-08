@@ -145,6 +145,28 @@ export class ReportsComponent implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════
+  // RESOLVE WHICH ID TO USE FOR API CALLS
+  //
+  // OWNER / ADMIN  → use their own userId
+  // MANAGER/WAITER → use adminId stored in ft_user if present,
+  //                  otherwise fall back to their own userId
+  // ════════════════════════════════════════
+
+  private getApiUserId(): number {
+    const currentUser = this.authService.getCurrentUser();
+    const adminId     = (currentUser as any)?.adminId ?? 0;
+    const userId      = this.authService.getCurrentUserId();
+
+    if (adminId && adminId !== 0) {
+      console.log('[Reports] Using adminId for API calls:', adminId);
+      return adminId;
+    }
+
+    console.log('[Reports] Using userId for API calls:', userId);
+    return userId;
+  }
+
+  // ════════════════════════════════════════
   // LOAD — both APIs in parallel
   // ════════════════════════════════════════
 
@@ -152,9 +174,9 @@ export class ReportsComponent implements OnInit, OnDestroy {
     this.isLoading = true;
     this.apiError  = '';
 
-    const userId = this.authService.getCurrentUserId();
-    const start  = ReportsService.toApiDate(this.startDate);
-    const end    = ReportsService.toApiDate(this.endDate);
+    const apiUserId = this.getApiUserId();
+    const start     = ReportsService.toApiDate(this.startDate);
+    const end       = ReportsService.toApiDate(this.endDate);
 
     if (!start || !end) {
       this.apiError  = 'Please select valid start and end dates.';
@@ -162,8 +184,10 @@ export class ReportsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const api1$ = this.reportsService.getAnalytics(userId, start, end);
-    const api2$ = this.reportsService.getChartData(userId, this.selectedChartPeriod);
+    console.log('[Reports] Loading data for apiUserId:', apiUserId);
+
+    const api1$ = this.reportsService.getAnalytics(apiUserId, start, end);
+    const api2$ = this.reportsService.getChartData(apiUserId, this.selectedChartPeriod);
 
     const sub = forkJoin({ summary: api1$, chart: api2$ }).subscribe({
       next: ({ summary, chart }) => {
@@ -196,8 +220,8 @@ export class ReportsComponent implements OnInit, OnDestroy {
   // When user changes the chart period dropdown — only refetch API 2
   onChartPeriodChange(): void {
     if (!this.chartPoints) return;
-    const userId = this.authService.getCurrentUserId();
-    const sub = this.reportsService.getChartData(userId, this.selectedChartPeriod).subscribe({
+    const apiUserId = this.getApiUserId();
+    const sub = this.reportsService.getChartData(apiUserId, this.selectedChartPeriod).subscribe({
       next: (chart) => {
         this.chartPoints = chart.data || [];
         this.rebuildCharts();
@@ -272,7 +296,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
 
   private rebuildCharts(): void {
     setTimeout(() => {
-      // ── Bar: labels + Income/Expense from API 2 ──
       const labels   = this.chartPoints.map(p => p.label);
       const incomes  = this.chartPoints.map(p => p.income);
       const expenses = this.chartPoints.map(p => p.expense);
@@ -288,7 +311,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
         }, false, true);
       }
 
-      // ── Area: profit trend from same API 2 data ──
       if (this.areaChartRef) {
         this.areaChartRef.updateOptions({
           xaxis:  { categories: labels },
@@ -300,7 +322,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
         }, false, true);
       }
 
-      // ── Donut: expenseBreakdown from API 1 ──
       if (this.donutChartRef) {
         const dLabels = this.expenseBreakdown.map(e => e.category);
         const dValues = this.expenseBreakdown.map(e => e.amount);
@@ -380,7 +401,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
       styles: { fontSize: 10 },
     });
 
-    // ── Chart period breakdown from API 2 ──
     if (this.chartPoints.length > 0) {
       const y2 = (doc as any).lastAutoTable.finalY + 10;
       const periodLabel = this.chartPeriods.find(p => p.value === this.selectedChartPeriod)?.label || this.selectedChartPeriod;
@@ -455,7 +475,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
     ws2['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, ws2, 'Period Breakdown');
 
-    // ── Chart data sheet (API 2) ──
     if (this.chartPoints.length > 0) {
       const periodLabel = this.chartPeriods.find(p => p.value === this.selectedChartPeriod)?.label || this.selectedChartPeriod;
       const ws3 = XLSX.utils.aoa_to_sheet([

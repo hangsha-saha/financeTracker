@@ -54,8 +54,26 @@ export class BillService {
     private restaurantService: RestaurantService
   ) {}
 
-  private get userId(): number {
-    return this.authService.getCurrentUserId();
+  // ════════════════════════════════════════
+  // RESOLVE WHICH ID TO USE FOR API CALLS
+  //
+  // OWNER / ADMIN  → use their own userId
+  // MANAGER/WAITER → use adminId stored in ft_user if present,
+  //                  otherwise fall back to their own userId
+  // ════════════════════════════════════════
+
+  private getApiUserId(): number {
+    const currentUser = this.authService.getCurrentUser();
+    const adminId     = (currentUser as any)?.adminId ?? 0;
+    const userId      = this.authService.getCurrentUserId();
+
+    if (adminId && adminId !== 0) {
+      console.log('[BillService] Using adminId for API calls:', adminId);
+      return adminId;
+    }
+
+    console.log('[BillService] Using userId for API calls:', userId);
+    return userId;
   }
 
   // ════════════════════════════════════════
@@ -73,7 +91,7 @@ export class BillService {
 
   getMenuItems(): Observable<MenuItemOption[]> {
     return this.http.get<any[]>(
-      `${this.BASE}/menu/user/${this.userId}`
+      `${this.BASE}/menu/user/${this.getApiUserId()}`
     ).pipe(
       map(list => {
         console.log('[Menu] raw API response:', list);
@@ -94,7 +112,7 @@ export class BillService {
 
   getVouchers(): Observable<VoucherOption[]> {
     return this.http.get<any[]>(
-      `${this.BASE}/vouchers/user/${this.userId}`
+      `${this.BASE}/vouchers/user/${this.getApiUserId()}`
     ).pipe(
       map(list => list.map(v => ({
         id:         v.voucherId  ?? v.id          ?? 0,
@@ -110,7 +128,7 @@ export class BillService {
 
   createVoucher(payload: CreateVoucherPayload): Observable<any> {
     return this.http.post<any>(
-      `${this.BASE}/vouchers/${this.userId}`,
+      `${this.BASE}/vouchers/${this.getApiUserId()}`,
       payload
     );
   }
@@ -122,9 +140,10 @@ export class BillService {
   // ════════════════════════════════════════
 
   createBill(payload: BillPayload, voucherId: number = 0): Observable<BillResponse> {
-    console.log('[Bill] POST /bills/user/', this.userId, '/voucher/', voucherId);
+    const apiUserId = this.getApiUserId();
+    console.log('[Bill] POST /bills/user/', apiUserId, '/voucher/', voucherId);
     return this.http.post<BillResponse>(
-      `${this.BASE}/bills/user/${this.userId}/voucher/${voucherId}`,
+      `${this.BASE}/bills/user/${apiUserId}/voucher/${voucherId}`,
       payload
     );
   }
@@ -148,7 +167,7 @@ export class BillService {
 
   getAllBills(): Observable<any[]> {
     return this.http.get<any[]>(
-      `${this.BASE}/bills/user/${this.userId}`
+      `${this.BASE}/bills/user/${this.getApiUserId()}`
     );
   }
 

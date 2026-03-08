@@ -14,10 +14,10 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   // ── Animated counter state ──
   counters = [
-    { label: 'Restaurants Using',  target: 500,  current: 0, suffix: '+' },
-    { label: 'Bills Generated',    target: 50000, current: 0, suffix: '+' },
-    { label: 'Revenue Tracked',    target: 99,   current: 0, suffix: '%' },
-    { label: 'Uptime Guaranteed',  target: 99.9, current: 0, suffix: '%', isDecimal: true },
+    { label: 'Restaurants Using',  target: 500,  current: 10, suffix: '+' },
+    { label: 'Bills Generated',    target: 50000, current: 10, suffix: '+' },
+    { label: 'Revenue Tracked',    target: 99,   current: 10, suffix: '%' },
+    { label: 'Uptime Guaranteed',  target: 99.9, current: 10, suffix: '%', isDecimal: true },
   ];
 
   // ── Active FAQ ──

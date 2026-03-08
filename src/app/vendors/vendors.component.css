@@ -631,3 +631,22 @@
     flex-direction: column;
   }
 }
+/* ── Validation error styles — add these to vendors.component.css ── */
+
+.input-error {
+  border-color: #ef4444 !important;
+  background-color: #fff5f5;
+}
+
+.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  outline: none;
+}
+
+.field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #ef4444;
+  font-weight: 500;
+}

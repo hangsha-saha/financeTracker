@@ -360,18 +360,38 @@
     </div>
     <div class="modal-body">
       <div class="form-row">
+
+        <!-- Restaurant Name -->
         <div class="form-group">
           <label class="form-label">Restaurant Name <span class="required">*</span></label>
           <input type="text" class="form-input"
+            [class.input-error]="mRestaurantErr"
             [(ngModel)]="mRestaurant"
-            placeholder="e.g. Spice Garden">
+            placeholder="e.g. Spice Garden"
+            (input)="mRestaurantErr = ''">
+          <span class="field-error" *ngIf="mRestaurantErr">{{ mRestaurantErr }}</span>
         </div>
+
+        <!-- GST Number -->
         <div class="form-group">
-          <label class="form-label">GST Number</label>
+          <label class="form-label">
+            GST Number
+            <span style="color:#999; font-weight:400; font-size:12px;">(optional)</span>
+          </label>
           <input type="text" class="form-input"
+            [class.input-error]="mGstErr"
             [(ngModel)]="mGst"
-            placeholder="e.g. 22AAAAA0000A1Z5">
+            placeholder="e.g. 22AAAAA0000A1Z5"
+            maxlength="15"
+            style="text-transform: uppercase;"
+            (input)="clearGstErr()"
+            (blur)="validateGst()">
+          <span class="field-error" *ngIf="mGstErr">{{ mGstErr }}</span>
+          <span class="form-hint" *ngIf="!mGstErr">
+            15-character GST number (e.g. 22AAAAA0000A1Z5)
+          </span>
         </div>
+
       </div>
       <div class="form-group">
         <label class="form-label">Address</label>
